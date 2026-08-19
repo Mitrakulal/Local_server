@@ -1,0 +1,162 @@
+/**
+ * Instrument Panel style: graphite structural surfaces, parchment readouts,
+ * and Calibration Orange reserved for active capacity and deliberate actions.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.15 0.008 60);
+  --foreground: oklch(0.93 0.012 75);
+  --card: oklch(0.19 0.01 60);
+  --card-foreground: oklch(0.93 0.012 75);
+  --popover: oklch(0.22 0.012 60);
+  --popover-foreground: oklch(0.93 0.012 75);
+  --primary: oklch(0.67 0.19 42);
+  --primary-foreground: oklch(0.98 0.01 70);
+  --secondary: oklch(0.25 0.012 60);
+  --secondary-foreground: oklch(0.87 0.012 75);
+  --muted: oklch(0.24 0.009 60);
+  --muted-foreground: oklch(0.68 0.014 70);
+  --accent: oklch(0.28 0.012 60);
+  --accent-foreground: oklch(0.93 0.012 75);
+  --destructive: oklch(0.66 0.21 27);
+  --destructive-foreground: oklch(0.98 0.01 70);
+  --border: oklch(0.37 0.014 63 / 70%);
+  --input: oklch(0.27 0.013 60);
+  --ring: oklch(0.67 0.19 42);
+}
+
+.dark {
+  --background: oklch(0.15 0.008 60);
+  --foreground: oklch(0.93 0.012 75);
+  --card: oklch(0.19 0.01 60);
+  --card-foreground: oklch(0.93 0.012 75);
+  --popover: oklch(0.22 0.012 60);
+  --popover-foreground: oklch(0.93 0.012 75);
+  --primary: oklch(0.67 0.19 42);
+  --primary-foreground: oklch(0.98 0.01 70);
+  --secondary: oklch(0.25 0.012 60);
+  --secondary-foreground: oklch(0.87 0.012 75);
+  --muted: oklch(0.24 0.009 60);
+  --muted-foreground: oklch(0.68 0.014 70);
+  --accent: oklch(0.28 0.012 60);
+  --accent-foreground: oklch(0.93 0.012 75);
+  --destructive: oklch(0.66 0.21 27);
+  --destructive-foreground: oklch(0.98 0.01 70);
+  --border: oklch(0.37 0.014 63 / 70%);
+  --input: oklch(0.27 0.013 60);
+  --ring: oklch(0.67 0.19 42);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    background: #171717;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    min-width: 320px;
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer utilities {
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .instrument-panel {
+    background-color: oklch(0.19 0.01 60 / 92%);
+    box-shadow: inset 0 1px 0 oklch(0.95 0.01 75 / 6%), 0 18px 40px oklch(0.08 0.008 60 / 28%);
+  }
+
+  .faceplate {
+    background-color: oklch(0.235 0.022 65 / 96%);
+    background-image: linear-gradient(120deg, oklch(0.28 0.025 69 / 25%), transparent 48%), repeating-linear-gradient(90deg, transparent 0 23px, oklch(0.95 0.02 75 / 2.5%) 24px);
+    box-shadow: inset 0 1px 0 oklch(0.96 0.02 75 / 10%), inset 0 0 0 1px oklch(0.05 0.01 60 / 18%), 0 18px 40px oklch(0.08 0.008 60 / 28%);
+  }
+
+  .meter-segment {
+    background: oklch(0.24 0.01 60);
+    box-shadow: inset 0 1px 0 oklch(0.94 0.01 75 / 4%);
+  }
+
+  .panel-label {
+    @apply font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hairline {
+    background: linear-gradient(90deg, transparent, oklch(0.67 0.19 42 / 65%), transparent);
+  }
+
+  .sweep-in {
+    animation: sweep-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sweep-in {
+      animation: none;
+    }
+  }
+}
+
+@keyframes sweep-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
