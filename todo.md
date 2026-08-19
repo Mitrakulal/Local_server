@@ -22,3 +22,5 @@
 - [x] Raise the dashboard’s long-output test ceiling to the observed 8K Gemma context limit.
 - [ ] Run a one-user 4K or 8K long-answer test and confirm whether the final answer finishes without a `length` cutoff.
 - [x] Remove the dashboard’s client-side streamed-text truncation and display the server completion reason for long-output tests.
+- [x] Record the six-user benchmark evidence: four requests streamed promptly and the fifth/sixth requests queued.
+- [x] Add the verified Mac mini, llama.cpp, Gemma E2B, workload, timings, and four-active-slot recommendation to the Phase 0 documentation.
