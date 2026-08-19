@@ -33,6 +33,7 @@ type VirtualUser = {
   id: number;
   status: UserStatus;
   output: string;
+  reasoning: string;
   error?: string;
   startedAt?: number;
   responseStartMs?: number;
@@ -40,6 +41,7 @@ type VirtualUser = {
   elapsedMs?: number;
   promptTokens?: number;
   completionTokens?: number;
+  generationTokensPerSecond?: number;
 };
 
 type EventItem = {
@@ -191,9 +193,9 @@ function CapacityMeter({ users, planned }: { users: VirtualUser[]; planned: numb
 }
 
 function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?: number }) {
-  const generationRate = user.completionTokens && user.elapsedMs && user.firstTokenMs
+  const generationRate = user.generationTokensPerSecond ?? (user.completionTokens && user.elapsedMs && user.firstTokenMs
     ? user.completionTokens / Math.max((user.elapsedMs - user.firstTokenMs) / 1_000, 0.001)
-    : undefined;
+    : undefined);
   const progress = user.status === "completed" ? 100 : user.status === "streaming" ? 58 : user.status === "waiting" ? 24 : user.status === "error" || user.status === "cancelled" ? 100 : 8;
 
   return (
@@ -213,7 +215,7 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
 
       <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
         <div>
-          <p className="panel-label">TTFT</p>
+          <p className="panel-label">First stream</p>
           <p className="mono mt-1 text-xs text-stone-200">{formatMs(user.firstTokenMs)}</p>
         </div>
         <div>
@@ -232,15 +234,28 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
 
       {user.firstTokenMs !== undefined && (
         <div className="mt-4 flex items-center gap-2">
-          <span className="panel-label shrink-0">TTFT trace</span>
+          <span className="panel-label shrink-0">Stream trace</span>
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-800">
             <div className={`h-full rounded-full ${metricTone(user.firstTokenMs, baselineTtft ?? user.firstTokenMs)}`} style={{ width: `${Math.min(100, 20 + (user.firstTokenMs / Math.max(baselineTtft ?? user.firstTokenMs, 1)) * 28)}%` }} />
           </div>
         </div>
       )}
 
-      <div className="mono mt-4 min-h-20 rounded-xl border border-stone-700/60 bg-stone-950/45 p-3 text-[11px] leading-5 text-stone-400">
-        {user.error ? <span className="text-red-200">{user.error}</span> : user.output || <span className="text-stone-600">Awaiting stream output…</span>}
+      <div className="mt-4 space-y-3">
+        {user.reasoning && (
+          <div>
+            <p className="panel-label mb-1.5 text-amber-200/75">Reasoning stream</p>
+            <div className="mono max-h-28 overflow-y-auto rounded-xl border border-amber-300/15 bg-amber-300/[0.045] p-3 text-[11px] leading-5 text-amber-100/70">
+              {user.reasoning}
+            </div>
+          </div>
+        )}
+        <div>
+          <p className="panel-label mb-1.5">Answer stream</p>
+          <div className="mono min-h-20 rounded-xl border border-stone-700/60 bg-stone-950/45 p-3 text-[11px] leading-5 text-stone-400">
+            {user.error ? <span className="text-red-200">{user.error}</span> : user.output || <span className="text-stone-600">{user.reasoning ? "No final-answer token arrived before the request ended." : "Awaiting streamed output…"}</span>}
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -334,9 +349,11 @@ export default function Home() {
       const decoder = new TextDecoder();
       let buffer = "";
       let output = "";
+      let reasoning = "";
       let firstTokenMs: number | undefined;
       let promptTokens: number | undefined;
       let completionTokens: number | undefined;
+      let generationTokensPerSecond: number | undefined;
 
       const consumeLine = (line: string) => {
         const trimmed = line.trim();
@@ -345,23 +362,44 @@ export default function Home() {
         if (!payload || payload === "[DONE]") return;
         try {
           const message = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string } }>;
+            choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string | null } }>;
             usage?: { prompt_tokens?: number; completion_tokens?: number };
+            timings?: { prompt_n?: number; predicted_n?: number; predicted_per_second?: number };
           };
-          const token = message.choices?.[0]?.delta?.content;
-          if (typeof token === "string" && token.length > 0) {
+          const delta = message.choices?.[0]?.delta;
+          const answerToken = delta?.content;
+          const reasoningToken = delta?.reasoning_content;
+          const streamToken = typeof reasoningToken === "string" && reasoningToken.length > 0
+            ? reasoningToken
+            : typeof answerToken === "string" && answerToken.length > 0
+              ? answerToken
+              : undefined;
+
+          if (streamToken) {
             if (firstTokenMs === undefined) {
               firstTokenMs = performance.now() - start;
               updateUser(id, { status: "streaming", firstTokenMs });
-              addEvent("good", `VU-${String(id).padStart(2, "0")} received its first token in ${formatMs(firstTokenMs)}.`);
+              addEvent("good", `VU-${String(id).padStart(2, "0")} received its first ${reasoningToken ? "reasoning" : "answer"} token in ${formatMs(firstTokenMs)}.`);
             }
-            output = `${output}${token}`.slice(0, 3_000);
-            updateUser(id, { output });
+            if (typeof reasoningToken === "string" && reasoningToken.length > 0) {
+              reasoning = `${reasoning}${reasoningToken}`.slice(0, 3_000);
+              updateUser(id, { reasoning });
+            }
+            if (typeof answerToken === "string" && answerToken.length > 0) {
+              output = `${output}${answerToken}`.slice(0, 3_000);
+              updateUser(id, { output });
+            }
           }
           if (message.usage) {
             promptTokens = message.usage.prompt_tokens;
             completionTokens = message.usage.completion_tokens;
             updateUser(id, { promptTokens, completionTokens });
+          }
+          if (message.timings) {
+            promptTokens ??= message.timings.prompt_n;
+            completionTokens ??= message.timings.predicted_n;
+            generationTokensPerSecond ??= message.timings.predicted_per_second;
+            updateUser(id, { promptTokens, completionTokens, generationTokensPerSecond });
           }
         } catch {
           // A non-JSON SSE line is ignored so one malformed event does not end the whole test.
@@ -380,7 +418,7 @@ export default function Home() {
 
       const elapsedMs = performance.now() - start;
       if (currentRunId === runId.current) {
-        updateUser(id, { status: "completed", elapsedMs, firstTokenMs, promptTokens, completionTokens, output });
+        updateUser(id, { status: "completed", elapsedMs, firstTokenMs, promptTokens, completionTokens, generationTokensPerSecond, output, reasoning });
         addEvent("good", `VU-${String(id).padStart(2, "0")} completed in ${formatMs(elapsedMs)}.`);
       }
     } catch (reason) {
@@ -408,7 +446,7 @@ export default function Home() {
 
     const nextRunId = runId.current + 1;
     runId.current = nextRunId;
-    const scenarios = Array.from({ length: config.virtualUsers }, (_, index) => ({ id: index + 1, status: "queued" as UserStatus, output: "" }));
+    const scenarios = Array.from({ length: config.virtualUsers }, (_, index) => ({ id: index + 1, status: "queued" as UserStatus, output: "", reasoning: "" }));
     setUsers(scenarios);
     setIsRunning(true);
     addEvent("neutral", `Starting ${config.virtualUsers} virtual users with a ${config.rampMs} ms launch ramp.`);

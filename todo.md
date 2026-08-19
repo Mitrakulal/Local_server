@@ -13,3 +13,7 @@
 - [x] Create a clean ZIP archive containing the dashboard source and all Phase 0 requirement documentation.
 - [x] Publish the completed dashboard source and documentation to `Mitrakulal/Local_server`.
 - [x] Write a beginner-friendly laptop-to-Mac-mini SSH testing guide with all commands and first benchmark steps.
+- [ ] Trigger automatic loading of `ggml-org/gemma-4-E2B-it-GGUF:Q8_0` through a router chat request, verify its streamed response, and run the first one-user dashboard baseline.
+- [ ] Verify the model locally on the Mac mini, then verify the forwarded endpoint from Windows PowerShell using `curl.exe` after the SSH tunnel is open.
+- [x] Verify that the llama.cpp router sends OpenAI-compatible SSE token events.
+- [x] Update the dashboard to treat llama.cpp `delta.reasoning_content` as a valid first stream token and display it separately from `delta.content`.

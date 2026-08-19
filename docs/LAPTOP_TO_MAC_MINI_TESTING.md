@@ -257,6 +257,10 @@ If three users produce a sharp jump in p95 TTFT, much longer elapsed times, erro
 | **Run tape** | Timestamped test events, including dispatch, first-token arrival, completion, or cancellation. |
 | **Server-reported output** | Token count only if your model server provides usage in streamed responses. `not reported` is normal for some local servers. |
 
+### Gemma E2B reasoning stream note
+
+The installed `ggml-org/gemma-4-E2B-it-GGUF:Q8_0` llama.cpp preset can send the earliest text in the OpenAI-compatible field `choices[0].delta.reasoning_content`, then later send normal answer text in `choices[0].delta.content`. The dashboard treats the first non-empty value from **either** field as the first stream token. It displays the reasoning stream separately from the final answer stream so the measured TTFT represents when the user first receives meaningful streamed model output.
+
 ## 10. How to choose a safe result
 
 Use the included file `docs/PHASE0_RESULTS_TEMPLATE.md` after each meaningful run. A simple decision rule is:
