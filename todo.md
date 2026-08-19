@@ -17,3 +17,7 @@
 - [ ] Verify the model locally on the Mac mini, then verify the forwarded endpoint from Windows PowerShell using `curl.exe` after the SSH tunnel is open.
 - [x] Verify that the llama.cpp router sends OpenAI-compatible SSE token events.
 - [x] Update the dashboard to treat llama.cpp `delta.reasoning_content` as a valid first stream token and display it separately from `delta.content`.
+- [x] Confirm the llama.cpp Gemma model streams reasoning tokens and produces valid TTFT and generation-rate measurements.
+- [ ] Run a final-answer test with a larger output allowance or a reduced-reasoning configuration, then record the selected interactive workload cap.
+- [x] Raise the dashboard’s long-output test ceiling to the observed 8K Gemma context limit.
+- [ ] Run a one-user 4K or 8K long-answer test and confirm whether the final answer finishes without a `length` cutoff.

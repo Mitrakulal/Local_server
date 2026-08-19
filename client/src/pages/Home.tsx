@@ -77,6 +77,8 @@ const initialConfig: TestConfig = {
   uniqueSuffix: true,
 };
 
+const MAX_OUTPUT_TOKENS = 8_192;
+
 const statusStyle: Record<UserStatus, string> = {
   queued: "border-amber-400/25 bg-amber-400/10 text-amber-200",
   waiting: "border-amber-400/25 bg-amber-400/10 text-amber-200",
@@ -564,9 +566,10 @@ export default function Home() {
               <label className="block">
                 <span className="panel-label">Max output</span>
                 <div className="relative mt-2">
-                  <Input className="mono h-10 border-stone-700 bg-stone-950/60 pr-9 text-xs text-stone-100" type="number" min={8} max={2_048} value={config.maxTokens} onChange={(event) => setConfig((current) => ({ ...current, maxTokens: clamp(Number(event.target.value) || 8, 8, 2_048) }))} disabled={isRunning} />
+                  <Input className="mono h-10 border-stone-700 bg-stone-950/60 pr-9 text-xs text-stone-100" type="number" min={8} max={MAX_OUTPUT_TOKENS} value={config.maxTokens} onChange={(event) => setConfig((current) => ({ ...current, maxTokens: clamp(Number(event.target.value) || 8, 8, MAX_OUTPUT_TOKENS) }))} disabled={isRunning} />
                   <span className="mono pointer-events-none absolute right-2.5 top-3 text-[10px] text-stone-500">tok</span>
                 </div>
+                <p className="mono mt-1.5 text-[10px] leading-4 text-stone-500">Up to 8K requested. Actual generation is limited by remaining model context after prompt tokens.</p>
               </label>
               <label className="block">
                 <span className="panel-label">Timeout</span>
