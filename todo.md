@@ -10,5 +10,5 @@
 - [x] Validate the TypeScript build and perform a local visual verification.
 - [x] Transfer the complete source and documentation into the selected GitHub repository.
 - [ ] Run the first real baseline against the Mac mini endpoint, then repeat with two virtual users.
-- [ ] Create a clean ZIP archive containing the dashboard source and all Phase 0 requirement documentation.
-- [ ] Publish the completed dashboard source and documentation to `Mitrakulal/Local_server`.
+- [x] Create a clean ZIP archive containing the dashboard source and all Phase 0 requirement documentation.
+- [x] Publish the completed dashboard source and documentation to `Mitrakulal/Local_server`.
