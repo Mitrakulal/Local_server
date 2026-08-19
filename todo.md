@@ -29,3 +29,4 @@
 - [x] Reject the Qwen3 4B comparison candidate after user quality evaluation; no further Qwen setup or benchmark work is required.
 - [x] Select `ggml-org/gemma-4-E2B-it-GGUF:Q8_0` as the Phase 0 model based on user quality preference and measured llama.cpp capacity.
 - [x] Create the final Phase 0 model-selection and capacity closeout record.
+- [x] Create a detailed Phase 1 protected-gateway architecture blueprint for Gemma E2B llama.cpp, including security, fairness, request limits, queue behavior, metrics, and rollout acceptance tests.

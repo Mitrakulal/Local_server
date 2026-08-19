@@ -1,0 +1,25 @@
+flowchart TB
+  SDK[Customer SDK / application]
+
+  subgraph E[Cloudflare edge]
+    DNS[api.example.com]
+    WAF[Coarse WAF and IP rate control]
+    ACCESS[Cloudflare Access for admin and metrics only]
+    TUNNEL[Cloudflare Tunnel]
+  end
+
+  subgraph M[Mac mini M4 - private host]
+    CF[cloudflared outbound connector]
+    GW[Phase 1 Gateway<br/>127.0.0.1:8787]
+    DB[(SQLite<br/>policy and usage metadata)]
+    LLAMA[llama.cpp Gemma router<br/>127.0.0.1:8080]
+    LOG[Redacted logs and metrics]
+  end
+
+  SDK -->|HTTPS plus customer API key| DNS
+  DNS --> WAF --> TUNNEL --> CF --> GW
+  ACCESS -. protects admin and metrics paths .-> TUNNEL
+  GW <-->|key policy, quota, audit metadata| DB
+  GW -->|validated OpenAI-compatible SSE request| LLAMA
+  GW --> LOG
+  LLAMA -. no public route .- SDK
