@@ -24,3 +24,8 @@
 - [x] Remove the dashboard’s client-side streamed-text truncation and display the server completion reason for long-output tests.
 - [x] Record the six-user benchmark evidence: four requests streamed promptly and the fifth/sixth requests queued.
 - [x] Add the verified Mac mini, llama.cpp, Gemma E2B, workload, timings, and four-active-slot recommendation to the Phase 0 documentation.
+- [x] Preserve the verified Gemma E2B benchmark as the quality and capacity baseline for all future model comparisons.
+- [x] Select a focused two-model challenger shortlist: Qwen3 4B GGUF and Phi-4-mini-instruct GGUF, both tested through llama.cpp.
+- [x] Reject the Qwen3 4B comparison candidate after user quality evaluation; no further Qwen setup or benchmark work is required.
+- [x] Select `ggml-org/gemma-4-E2B-it-GGUF:Q8_0` as the Phase 0 model based on user quality preference and measured llama.cpp capacity.
+- [x] Create the final Phase 0 model-selection and capacity closeout record.
