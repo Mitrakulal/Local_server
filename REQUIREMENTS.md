@@ -78,6 +78,7 @@ Do not use customer data, private documents, secrets, personally identifying inf
 | File | Contents |
 |---|---|
 | `README.md` | Project overview and local launch. |
+| `docs/LAPTOP_TO_MAC_MINI_TESTING.md` | Every Mac mini, SSH-tunnel, laptop browser, interface, and first-test command. |
 | `docs/PHASE0_OPERATOR_GUIDE.md` | Detailed endpoint setup, CORS, dashboard operation, metrics, troubleshooting, and exit criteria. |
 | `docs/PHASE0_TEST_PLAN.md` | Repeatable benchmark sequence and capacity decision method. |
 | `docs/PHASE0_RESULTS_TEMPLATE.md` | Test-result record you should complete for each meaningful run. |

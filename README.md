@@ -9,6 +9,7 @@ It is designed for a Mac mini running a small local model through llama.cpp, Oll
 | Document | Use it for |
 |---|---|
 | [Operator guide](docs/PHASE0_OPERATOR_GUIDE.md) | Full setup, CORS, key handling, dashboard operation, metric interpretation, and troubleshooting. |
+| [Laptop-to-Mac-mini guide](docs/LAPTOP_TO_MAC_MINI_TESTING.md) | Every SSH, dashboard, model-port, and first benchmark command for testing from a separate laptop. |
 | [Test plan](docs/PHASE0_TEST_PLAN.md) | Repeatable baseline, concurrency, context, output, and recovery experiments. |
 | [Results template](docs/PHASE0_RESULTS_TEMPLATE.md) | Recording measurements and choosing tested operating limits. |
 | [Phase 1 handoff](docs/PHASE1_HANDOFF.md) | Turning the measured limits into gateway policy for a protected multi-tenant API. |

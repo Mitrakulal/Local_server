@@ -12,3 +12,4 @@
 - [ ] Run the first real baseline against the Mac mini endpoint, then repeat with two virtual users.
 - [x] Create a clean ZIP archive containing the dashboard source and all Phase 0 requirement documentation.
 - [x] Publish the completed dashboard source and documentation to `Mitrakulal/Local_server`.
+- [x] Write a beginner-friendly laptop-to-Mac-mini SSH testing guide with all commands and first benchmark steps.
