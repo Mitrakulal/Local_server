@@ -21,3 +21,4 @@
 - [ ] Run a final-answer test with a larger output allowance or a reduced-reasoning configuration, then record the selected interactive workload cap.
 - [x] Raise the dashboard’s long-output test ceiling to the observed 8K Gemma context limit.
 - [ ] Run a one-user 4K or 8K long-answer test and confirm whether the final answer finishes without a `length` cutoff.
+- [x] Remove the dashboard’s client-side streamed-text truncation and display the server completion reason for long-output tests.

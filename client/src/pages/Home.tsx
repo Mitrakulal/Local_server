@@ -42,6 +42,7 @@ type VirtualUser = {
   promptTokens?: number;
   completionTokens?: number;
   generationTokensPerSecond?: number;
+  finishReason?: string;
 };
 
 type EventItem = {
@@ -254,10 +255,18 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
         )}
         <div>
           <p className="panel-label mb-1.5">Answer stream</p>
-          <div className="mono min-h-20 rounded-xl border border-stone-700/60 bg-stone-950/45 p-3 text-[11px] leading-5 text-stone-400">
+          <div className="mono max-h-80 min-h-20 overflow-y-auto rounded-xl border border-stone-700/60 bg-stone-950/45 p-3 text-[11px] leading-5 text-stone-400">
             {user.error ? <span className="text-red-200">{user.error}</span> : user.output || <span className="text-stone-600">{user.reasoning ? "No final-answer token arrived before the request ended." : "Awaiting streamed output…"}</span>}
           </div>
         </div>
+        {user.finishReason === "length" && (
+          <div className="rounded-lg border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2">
+            <p className="mono text-[10px] leading-4 text-amber-100/80">Model stopped at the requested token cap. Increase Max output only if the remaining context permits it.</p>
+          </div>
+        )}
+        {user.finishReason && user.finishReason !== "length" && (
+          <p className="mono text-[10px] text-stone-500">Server completion reason: {user.finishReason}</p>
+        )}
       </div>
     </article>
   );
@@ -356,6 +365,7 @@ export default function Home() {
       let promptTokens: number | undefined;
       let completionTokens: number | undefined;
       let generationTokensPerSecond: number | undefined;
+      let finishReason: string | undefined;
 
       const consumeLine = (line: string) => {
         const trimmed = line.trim();
@@ -364,11 +374,16 @@ export default function Home() {
         if (!payload || payload === "[DONE]") return;
         try {
           const message = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string | null } }>;
+            choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string | null }; finish_reason?: string | null }>;
             usage?: { prompt_tokens?: number; completion_tokens?: number };
             timings?: { prompt_n?: number; predicted_n?: number; predicted_per_second?: number };
           };
-          const delta = message.choices?.[0]?.delta;
+          const choice = message.choices?.[0];
+          const delta = choice?.delta;
+          if (typeof choice?.finish_reason === "string") {
+            finishReason = choice.finish_reason;
+            updateUser(id, { finishReason });
+          }
           const answerToken = delta?.content;
           const reasoningToken = delta?.reasoning_content;
           const streamToken = typeof reasoningToken === "string" && reasoningToken.length > 0
@@ -384,11 +399,11 @@ export default function Home() {
               addEvent("good", `VU-${String(id).padStart(2, "0")} received its first ${reasoningToken ? "reasoning" : "answer"} token in ${formatMs(firstTokenMs)}.`);
             }
             if (typeof reasoningToken === "string" && reasoningToken.length > 0) {
-              reasoning = `${reasoning}${reasoningToken}`.slice(0, 3_000);
+              reasoning = `${reasoning}${reasoningToken}`;
               updateUser(id, { reasoning });
             }
             if (typeof answerToken === "string" && answerToken.length > 0) {
-              output = `${output}${answerToken}`.slice(0, 3_000);
+              output = `${output}${answerToken}`;
               updateUser(id, { output });
             }
           }
@@ -420,7 +435,7 @@ export default function Home() {
 
       const elapsedMs = performance.now() - start;
       if (currentRunId === runId.current) {
-        updateUser(id, { status: "completed", elapsedMs, firstTokenMs, promptTokens, completionTokens, generationTokensPerSecond, output, reasoning });
+        updateUser(id, { status: "completed", elapsedMs, firstTokenMs, promptTokens, completionTokens, generationTokensPerSecond, finishReason, output, reasoning });
         addEvent("good", `VU-${String(id).padStart(2, "0")} completed in ${formatMs(elapsedMs)}.`);
       }
     } catch (reason) {
