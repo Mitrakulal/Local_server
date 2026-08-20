@@ -30,3 +30,6 @@
 - [x] Select `ggml-org/gemma-4-E2B-it-GGUF:Q8_0` as the Phase 0 model based on user quality preference and measured llama.cpp capacity.
 - [x] Create the final Phase 0 model-selection and capacity closeout record.
 - [x] Create a detailed Phase 1 protected-gateway architecture blueprint for Gemma E2B llama.cpp, including security, fairness, request limits, queue behavior, metrics, and rollout acceptance tests.
+- [x] Implement the local-only Stage 1 gateway with hashed API keys, strict request validation, one-active-per-key and four-active-global enforcement, and SSE forwarding to loopback llama.cpp.
+- [x] Add gateway configuration templates, a local API-key bootstrap command, a health endpoint, and operational documentation.
+- [x] Run the Stage 1 local acceptance suite and publish the verified implementation to Local_server.

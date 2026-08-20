@@ -4,6 +4,10 @@ This project is a browser-based **Phase 0 capacity-testing instrument** for a lo
 
 It is designed for a Mac mini running a small local model through llama.cpp, Ollama, MLX-LM, or another endpoint that implements the OpenAI Chat Completions streaming format. It is intentionally a **testing dashboard**, not a production API gateway and not a customer-facing billing system.
 
+## Stage 1 local protected gateway
+
+The Stage 1 implementation now lives in [`gateway/`](gateway/). It keeps llama.cpp private on `127.0.0.1:8080` and adds a loopback-only OpenAI-compatible gateway on `127.0.0.1:8787` with hashed API keys, one-active-request-per-key, four active requests globally, input/output bounds, and SSE forwarding. Read [`gateway/README.md`](gateway/README.md) before running it on the Mac mini.
+
 ## Documentation map
 
 | Document | Use it for |

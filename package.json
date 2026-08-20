@@ -9,7 +9,10 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "gateway:start": "node --env-file=gateway/.env gateway/src/index.mjs",
+    "gateway:key": "node --env-file=gateway/.env gateway/src/keys.mjs",
+    "gateway:test": "node --test gateway/test/*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
