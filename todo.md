@@ -36,6 +36,9 @@
 - [x] Add guided Stage 1 gateway test modes to the dashboard, including key-pool input and one-key versus multiple-key scenarios.
 - [x] Validate the dashboard’s gateway-focused workflow and publish the simplified testing guide.
 - [x] Fix Raw llama.cpp capacity mode so it restores port 8080 and the selected Gemma router model after a gateway recipe was used.
-- [ ] Run the Phase 1 local smoke check with one created customer key through the gateway on port 8787.
-- [ ] Run the Phase 1 same-key fairness check and the five-key global-capacity check through the guided dashboard recipes.
+- [x] Run the Phase 1 local smoke check with one created customer key through the gateway on port 8787.
+- [x] Run the Phase 1 same-key fairness check and the five-key global-capacity check through the guided dashboard recipes.
 - [x] Create a private owner test key with the measured 8K output allowance while retaining bounded default customer-key output policies.
+- [ ] Revoke the two test keys that were exposed in pasted terminal output and create one replacement private owner test key.
+- [x] Confirm the existing port-8787 gateway process remains healthy rather than attempting to start a second gateway instance.
+- [x] Populate the dashboard capacity-test key-pool box with five replacement keys, one key per line, and verify only the fifth is protected.
