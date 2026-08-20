@@ -39,6 +39,6 @@
 - [x] Run the Phase 1 local smoke check with one created customer key through the gateway on port 8787.
 - [x] Run the Phase 1 same-key fairness check and the five-key global-capacity check through the guided dashboard recipes.
 - [x] Create a private owner test key with the measured 8K output allowance while retaining bounded default customer-key output policies.
-- [ ] Revoke the two test keys that were exposed in pasted terminal output and create one replacement private owner test key.
+- [ ] Rotate every exposed test API key by prefix, create fresh owner and invited-user replacements, and verify revoked keys are rejected.
 - [x] Confirm the existing port-8787 gateway process remains healthy rather than attempting to start a second gateway instance.
 - [x] Populate the dashboard capacity-test key-pool box with five replacement keys, one key per line, and verify only the fifth is protected.

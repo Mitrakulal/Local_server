@@ -196,6 +196,57 @@ cd ~/Local_server
 node --env-file=gateway/.env gateway/src/keys.mjs revoke --prefix=gma_live_EXAMPLE
 ```
 
+### Rotate exposed test keys safely
+
+If a raw API key appeared in a terminal screenshot, copied output, or chat message, treat it as compromised even if the service is still loopback-only. Revocation is immediate for new requests: the gateway keeps the historical hash and metadata but rejects the revoked raw key.
+
+First, revoke every known exposed prefix. The two prefixes already identified from the earlier local test are shown below. If other raw keys were visible in screenshots, revoke those prefixes as well. The prefix is the first 17 characters, including `gma_live_`; never paste the entire key into a command, chat, issue, or screenshot.
+
+```bash
+cd ~/Local_server
+
+node --env-file=gateway/.env gateway/src/keys.mjs revoke --prefix=gma_live_gAc4FXEr
+node --env-file=gateway/.env gateway/src/keys.mjs revoke --prefix=gma_live_xcDUtDyt
+```
+
+Each command should print `"revoked": true`. Next, create a fresh private owner key. The raw value is shown exactly once. Copy it directly into a password manager; do not save it in the repository, `.env`, shell history, screenshots, or chat.
+
+```bash
+cd ~/Local_server
+
+node --env-file=gateway/.env gateway/src/keys.mjs create \
+  --tenant=owner-private \
+  --label="Owner private 8K key — rotated" \
+  --expires-days=30 \
+  --max-output=8192
+```
+
+For each new invited user, create a separate standard key. It inherits the safer 512-token customer output limit, one active request at a time, six requests per minute, and 50 requests per day from `gateway/.env`.
+
+```bash
+cd ~/Local_server
+
+node --env-file=gateway/.env gateway/src/keys.mjs create \
+  --tenant=invite-01 \
+  --label="Invited user 01 — rotated" \
+  --expires-days=30
+```
+
+To check a revoked key without revealing it in your terminal history, substitute the old key only at the prompt below. A revoked key must receive `401` with `invalid_api_key`; a new valid key must receive a normal SSE stream.
+
+```bash
+read -s OLD_KEY
+printf '\n'
+curl -sS -o /dev/null -w 'Old-key HTTP status: %{http_code}\n' \
+  http://127.0.0.1:8787/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $OLD_KEY" \
+  -d '{"model":"gemma-e2b","stream":false,"max_tokens":8,"messages":[{"role":"user","content":"Reply with OK."}]}'
+unset OLD_KEY
+```
+
+The old-key result should be `401`. Do not run a full production test against a fresh key in a shared screenshot. Once the old-key check passes, update the dashboard key pool only with the newly created keys, then delete any saved test-key notes or screenshots that contained the old raw values.
+
 ## 9. Convert the validated gateway to a user service
 
 Only after the local tests pass, install it as a user-level macOS service. The template deliberately uses a wrapper that loads the local `.env` file instead of placing secrets inside a launchd plist.
