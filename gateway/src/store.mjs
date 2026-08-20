@@ -62,6 +62,17 @@ export class GatewayStore {
     `);
     this.findKeyStatement = this.db.prepare('SELECT * FROM api_keys WHERE secret_hash = ?');
     this.findPrefixStatement = this.db.prepare('SELECT * FROM api_keys WHERE prefix = ?');
+    this.listKeysStatement = this.db.prepare(`
+      SELECT
+        prefix, tenant_id, label, status, expires_at, active_limit,
+        rpm_limit, daily_request_limit, max_output, created_at, revoked_at
+      FROM api_keys
+      WHERE (? = 'all' OR status = ?)
+      ORDER BY created_at ASC
+    `);
+    this.revokeAllActiveStatement = this.db.prepare(
+      "UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE status = 'active'",
+    );
     this.insertKeyStatement = this.db.prepare(`
       INSERT INTO api_keys (
         id, tenant_id, label, prefix, secret_hash, status, expires_at,
@@ -117,6 +128,14 @@ export class GatewayStore {
     if (!key) return false;
     this.db.prepare("UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE prefix = ?").run(new Date().toISOString(), prefix);
     return true;
+  }
+
+  listKeys(status = 'active') {
+    return this.listKeysStatement.all(status, status);
+  }
+
+  revokeAllActiveKeys() {
+    return this.revokeAllActiveStatement.run(new Date().toISOString()).changes;
   }
 
   recordEvent(event) {

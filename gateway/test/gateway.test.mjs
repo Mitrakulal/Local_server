@@ -63,6 +63,7 @@ async function createFixture({ delayMs = 40, globalConcurrent = 4 } = {}) {
   return {
     baseUrl: `http://127.0.0.1:${gatewayPort}`,
     createKey,
+    store,
     calls: () => backendCalls,
     async cleanup() {
       await gateway.stop();
@@ -146,6 +147,28 @@ test('rejects an output budget above the key policy before backend dispatch', as
     const response = await chatRequest(fixture.baseUrl, key.rawKey, { max_tokens: 65 });
     assert.equal(response.status, 422);
     assert.equal((await response.json()).error.code, 'output_limit_exceeded');
+    assert.equal(fixture.calls(), 0);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test('lists only non-secret key metadata and revokes every active key with an explicit owner action', async () => {
+  const fixture = await createFixture();
+  try {
+    const first = fixture.createKey('first');
+    const second = fixture.createKey('second');
+    const active = fixture.store.listKeys('active');
+    assert.equal(active.length, 2);
+    assert.equal(active[0].prefix, first.prefix);
+    assert.equal(active[1].prefix, second.prefix);
+    assert.equal('secret_hash' in active[0], false);
+    assert.equal('rawKey' in active[0], false);
+    assert.equal(fixture.store.revokeAllActiveKeys(), 2);
+    assert.equal(fixture.store.listKeys('active').length, 0);
+    assert.equal(fixture.store.listKeys('revoked').length, 2);
+    const rejected = await chatRequest(fixture.baseUrl, first.rawKey);
+    assert.equal(rejected.status, 401);
     assert.equal(fixture.calls(), 0);
   } finally {
     await fixture.cleanup();

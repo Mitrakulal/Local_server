@@ -181,6 +181,29 @@ The suite verifies invalid-key rejection, SSE forwarding, one-active-request-per
 
 ## 8. Metrics and key revocation
 
+### Inspect key inventory without exposing secrets
+
+Use the owner command below to view every **active** key. It deliberately prints only non-secret metadata: prefix, tenant ID, label, expiry, and policy limits. It never prints a raw API key or its stored hash.
+
+```bash
+cd ~/Local_server
+node --env-file=gateway/.env gateway/src/keys.mjs list --status=active
+```
+
+To inspect revoked records as well, run `list --status=all`.
+
+### Deactivate all currently active keys
+
+Use this only when you want to invalidate every active test/customer key at once. The exact confirmation phrase is deliberate: it prevents an accidental copy-and-paste from disabling every customer. Existing in-flight streams may finish, but no revoked key can start a new request.
+
+```bash
+cd ~/Local_server
+node --env-file=gateway/.env gateway/src/keys.mjs revoke-all \
+  --confirm=REVOKE_ALL_ACTIVE_KEYS
+```
+
+The response gives only the count of deactivated keys. It does not reveal any API key values. Create replacement keys afterwards with the normal `create` command in section 4.
+
 Retrieve local metrics from the Mac mini only:
 
 ```bash

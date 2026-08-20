@@ -46,8 +46,19 @@ try {
     if (!prefix) throw new Error('Usage: node gateway/src/keys.mjs revoke --prefix=<key-prefix>');
     const revoked = store.revokeByPrefix(prefix);
     console.log(JSON.stringify({ revoked, prefix }, null, 2));
+  } else if (command === 'list') {
+    const status = option('status', 'active');
+    if (!['active', 'revoked', 'all'].includes(status)) {
+      throw new Error('Usage: node gateway/src/keys.mjs list [--status=active|revoked|all]');
+    }
+    console.log(JSON.stringify({ status, keys: store.listKeys(status) }, null, 2));
+  } else if (command === 'revoke-all') {
+    if (option('confirm') !== 'REVOKE_ALL_ACTIVE_KEYS') {
+      throw new Error('Refusing bulk revocation. Usage: node gateway/src/keys.mjs revoke-all --confirm=REVOKE_ALL_ACTIVE_KEYS');
+    }
+    console.log(JSON.stringify({ revoked_active_keys: store.revokeAllActiveKeys() }, null, 2));
   } else {
-    throw new Error('Usage: node gateway/src/keys.mjs <create|revoke> [options]');
+    throw new Error('Usage: node gateway/src/keys.mjs <create|list|revoke|revoke-all> [options]');
   }
 } finally {
   store.close();
