@@ -106,6 +106,21 @@ node --env-file=gateway/.env gateway/src/keys.mjs create \
 
 Copy the returned `api_key` once into a password manager. The database retains only its keyed hash and cannot print the raw value again.
 
+### Optional: owner-only full-output test key
+
+Normal invited-user keys start with a 512-token output limit. For your private long-output test, create a **separate** owner key with the measured 8K ceiling:
+
+```bash
+cd ~/Local_server
+node --env-file=gateway/.env gateway/src/keys.mjs create \
+  --tenant=owner-test \
+  --label="Private 8K output test" \
+  --expires-days=7 \
+  --max-output=8192
+```
+
+Use this key only for your own testing. It still cannot exceed the finite 8K model context/output ceiling, and it still has one active request at a time. Keep the normal 512-token default for new customer keys until you deliberately create a different product tier.
+
 ## 5. Send a local test request
 
 Replace `PASTE_THE_NEW_KEY` locally. Do not paste a real key into chat.

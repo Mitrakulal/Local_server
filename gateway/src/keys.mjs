@@ -17,8 +17,9 @@ try {
     const tenantId = option('tenant');
     const label = option('label', 'invited-user');
     const expiresDays = Number.parseInt(option('expires-days', '30'), 10);
-    if (!tenantId || !Number.isSafeInteger(expiresDays) || expiresDays < 1) {
-      throw new Error('Usage: node gateway/src/keys.mjs create --tenant=<id> --label=<label> --expires-days=<positive integer>');
+    const maxOutput = Number.parseInt(option('max-output', String(config.defaultMaxOutput)), 10);
+    if (!tenantId || !Number.isSafeInteger(expiresDays) || expiresDays < 1 || !Number.isSafeInteger(maxOutput) || maxOutput < 1 || maxOutput > config.absoluteMaxOutput) {
+      throw new Error(`Usage: node gateway/src/keys.mjs create --tenant=<id> --label=<label> --expires-days=<positive integer> [--max-output=1..${config.absoluteMaxOutput}]`);
     }
     const expiresAt = new Date(Date.now() + expiresDays * 86400000).toISOString();
     const key = store.createKey({
@@ -28,7 +29,7 @@ try {
       activeLimit: config.perKeyConcurrent,
       rpmLimit: config.defaultRpmLimit,
       dailyRequestLimit: config.defaultDailyRequestLimit,
-      maxOutput: config.defaultMaxOutput,
+      maxOutput,
     });
     console.log(JSON.stringify({
       created: true,
@@ -36,6 +37,7 @@ try {
       tenant_id: key.tenantId,
       label: key.label,
       expires_at: key.expiresAt,
+      max_output: maxOutput,
       api_key: key.rawKey,
       warning: 'Copy this API key now. It is not stored in raw form and cannot be displayed again.',
     }, null, 2));
