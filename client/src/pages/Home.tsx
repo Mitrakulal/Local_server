@@ -359,6 +359,16 @@ export default function Home() {
   };
 
   const applyGatewayTestMode = (gatewayTestMode: GatewayTestMode) => {
+    const rawLlamaDefaults = {
+      endpoint: "http://127.0.0.1:8080/v1",
+      apiKey: "",
+      apiKeyPool: "",
+      model: "ggml-org/gemma-4-E2B-it-GGUF:Q8_0",
+      rampMs: 500,
+      maxTokens: 128,
+      timeoutMs: 120_000,
+      uniqueSuffix: true,
+    };
     const gatewayDefaults = {
       endpoint: "http://127.0.0.1:8787/v1",
       model: "gemma-e2b",
@@ -368,7 +378,7 @@ export default function Home() {
       uniqueSuffix: true,
     };
     setConfig((current) => {
-      if (gatewayTestMode === "raw-capacity") return { ...current, gatewayTestMode };
+      if (gatewayTestMode === "raw-capacity") return { ...current, ...rawLlamaDefaults, gatewayTestMode };
       if (gatewayTestMode === "gateway-smoke") return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 1 };
       if (gatewayTestMode === "same-key-limit") return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 2 };
       return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 5 };

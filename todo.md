@@ -35,3 +35,4 @@
 - [x] Run the Stage 1 local acceptance suite and publish the verified implementation to Local_server.
 - [x] Add guided Stage 1 gateway test modes to the dashboard, including key-pool input and one-key versus multiple-key scenarios.
 - [x] Validate the dashboard’s gateway-focused workflow and publish the simplified testing guide.
+- [x] Fix Raw llama.cpp capacity mode so it restores port 8080 and the selected Gemma router model after a gateway recipe was used.
