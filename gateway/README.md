@@ -142,7 +142,16 @@ In the dashboard, use the following values:
 | Users | 1 for the first gateway check. |
 | Max output | 128 for the smoke test; 512 for standard interactive testing. |
 
-Do not set dashboard users higher than `1` with one key. The Stage 1 gateway will correctly return `429 key_concurrency_exceeded` for the second simultaneous request from the same key. To validate the four-slot global limit, create five separate keys and use one per test client.
+The dashboard includes four simple **Test recipe** choices. Select the recipe before pasting customer keys; it automatically fills the gateway endpoint, public model alias, user count, ramp, and a small output cap.
+
+| Dashboard recipe | What you paste | Expected result |
+|---|---|---|
+| Gateway smoke check | One invited-user key | One request streams a Gemma answer. |
+| Gateway fairness check | One invited-user key | User 1 runs; User 2 is shown as an **expected gateway block** with `key_concurrency_exceeded`. |
+| Gateway capacity check | Five separate invited-user keys, one per line | Users 1–4 run; User 5 is shown as an **expected gateway block** with `capacity_busy`. |
+| Raw llama.cpp capacity test | No gateway key is required | Preserves the original Phase 0 capacity workflow. |
+
+The two expected gateway blocks are successful protection checks, not dashboard failures. Do not set dashboard users higher than `1` with a single customer key unless you deliberately selected the fairness recipe.
 
 ## 7. Local acceptance suite
 

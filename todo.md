@@ -33,3 +33,5 @@
 - [x] Implement the local-only Stage 1 gateway with hashed API keys, strict request validation, one-active-per-key and four-active-global enforcement, and SSE forwarding to loopback llama.cpp.
 - [x] Add gateway configuration templates, a local API-key bootstrap command, a health endpoint, and operational documentation.
 - [x] Run the Stage 1 local acceptance suite and publish the verified implementation to Local_server.
+- [x] Add guided Stage 1 gateway test modes to the dashboard, including key-pool input and one-key versus multiple-key scenarios.
+- [x] Validate the dashboard’s gateway-focused workflow and publish the simplified testing guide.

@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
-type UserStatus = "queued" | "waiting" | "streaming" | "completed" | "error" | "cancelled";
+type UserStatus = "queued" | "waiting" | "streaming" | "completed" | "protected" | "error" | "cancelled";
+type GatewayTestMode = "raw-capacity" | "gateway-smoke" | "same-key-limit" | "global-capacity-limit";
 
 type VirtualUser = {
   id: number;
@@ -35,6 +36,8 @@ type VirtualUser = {
   output: string;
   reasoning: string;
   error?: string;
+  keyPrefix?: string;
+  policyResult?: string;
   startedAt?: number;
   responseStartMs?: number;
   firstTokenMs?: number;
@@ -55,6 +58,8 @@ type EventItem = {
 type TestConfig = {
   endpoint: string;
   apiKey: string;
+  apiKeyPool: string;
+  gatewayTestMode: GatewayTestMode;
   model: string;
   virtualUsers: number;
   rampMs: number;
@@ -68,6 +73,8 @@ type TestConfig = {
 const initialConfig: TestConfig = {
   endpoint: "http://127.0.0.1:8080/v1",
   apiKey: "",
+  apiKeyPool: "",
+  gatewayTestMode: "raw-capacity",
   model: "your-local-model",
   virtualUsers: 2,
   rampMs: 500,
@@ -85,6 +92,7 @@ const statusStyle: Record<UserStatus, string> = {
   waiting: "border-amber-400/25 bg-amber-400/10 text-amber-200",
   streaming: "border-teal-300/30 bg-teal-300/10 text-teal-100",
   completed: "border-teal-300/25 bg-teal-300/10 text-teal-100",
+  protected: "border-orange-300/30 bg-orange-300/10 text-orange-100",
   error: "border-red-400/30 bg-red-400/10 text-red-200",
   cancelled: "border-stone-400/25 bg-stone-400/10 text-stone-300",
 };
@@ -94,6 +102,7 @@ const statusDot: Record<UserStatus, string> = {
   waiting: "bg-amber-300 animate-pulse",
   streaming: "bg-teal-300 animate-pulse",
   completed: "bg-teal-300",
+  protected: "bg-orange-300",
   error: "bg-red-400",
   cancelled: "bg-stone-400",
 };
@@ -126,6 +135,30 @@ function completionUrl(endpoint: string) {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
   if (trimmed.endsWith("/chat/completions")) return trimmed;
   return `${trimmed}/chat/completions`;
+}
+
+function keyPool(value: string) {
+  return value.split(/\r?\n/).map((key) => key.trim()).filter(Boolean);
+}
+
+function keyPrefix(key: string) {
+  return key.length > 17 ? `${key.slice(0, 17)}…` : key;
+}
+
+function expectedGatewayBlock(mode: GatewayTestMode, id: number) {
+  if (mode === "same-key-limit" && id > 1) return "key_concurrency_exceeded";
+  if (mode === "global-capacity-limit" && id > 4) return "capacity_busy";
+  return undefined;
+}
+
+function readableGatewayError(status: number, rawBody: string) {
+  try {
+    const parsed = JSON.parse(rawBody) as { error?: { message?: string; code?: string } };
+    if (parsed.error?.code) return { code: parsed.error.code, message: parsed.error.message || parsed.error.code };
+  } catch {
+    // Fall through to a compact raw preview when the endpoint does not return OpenAI-style JSON.
+  }
+  return { code: `http_${status}`, message: rawBody.replace(/\s+/g, " ").slice(0, 180) || `HTTP ${status}` };
 }
 
 function metricTone(value: number, baseline: number) {
@@ -199,7 +232,7 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
   const generationRate = user.generationTokensPerSecond ?? (user.completionTokens && user.elapsedMs && user.firstTokenMs
     ? user.completionTokens / Math.max((user.elapsedMs - user.firstTokenMs) / 1_000, 0.001)
     : undefined);
-  const progress = user.status === "completed" ? 100 : user.status === "streaming" ? 58 : user.status === "waiting" ? 24 : user.status === "error" || user.status === "cancelled" ? 100 : 8;
+  const progress = user.status === "completed" || user.status === "protected" ? 100 : user.status === "streaming" ? 58 : user.status === "waiting" ? 24 : user.status === "error" || user.status === "cancelled" ? 100 : 8;
 
   return (
     <article className="instrument-panel sweep-in relative overflow-hidden rounded-2xl border border-stone-700/70 p-4">
@@ -208,12 +241,13 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${statusDot[user.status]}`} />
           <span className="mono text-xs font-semibold text-stone-100">VU-{String(user.id).padStart(2, "0")}</span>
+          {user.keyPrefix && <span className="mono text-[9px] text-stone-500">{user.keyPrefix}</span>}
         </div>
         <span className={`mono rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] ${statusStyle[user.status]}`}>{user.status}</span>
       </div>
 
       <div className="mt-4 h-1 overflow-hidden rounded-full bg-stone-800">
-        <div className={`h-full rounded-full transition-all duration-200 ${user.status === "error" ? "bg-red-400" : user.status === "cancelled" ? "bg-stone-500" : "bg-orange-400"}`} style={{ width: `${progress}%` }} />
+        <div className={`h-full rounded-full transition-all duration-200 ${user.status === "error" ? "bg-red-400" : user.status === "cancelled" ? "bg-stone-500" : user.status === "protected" ? "bg-teal-300" : "bg-orange-400"}`} style={{ width: `${progress}%` }} />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
@@ -245,6 +279,11 @@ function ChannelCard({ user, baselineTtft }: { user: VirtualUser; baselineTtft?:
       )}
 
       <div className="mt-4 space-y-3">
+        {user.policyResult && (
+          <div className="rounded-lg border border-teal-300/20 bg-teal-300/[0.05] px-3 py-2">
+            <p className="mono text-[10px] leading-4 text-teal-100/90">Expected gateway protection verified: {user.policyResult}</p>
+          </div>
+        )}
         {user.reasoning && (
           <div>
             <p className="panel-label mb-1.5 text-amber-200/75">Reasoning stream</p>
@@ -286,6 +325,7 @@ export default function Home() {
 
   const metrics = useMemo(() => {
     const completed = users.filter((user) => user.status === "completed");
+    const protectedCount = users.filter((user) => user.status === "protected").length;
     const errorCount = users.filter((user) => user.status === "error").length;
     const cancelledCount = users.filter((user) => user.status === "cancelled").length;
     const active = users.filter((user) => user.status === "waiting" || user.status === "streaming" || user.status === "queued").length;
@@ -296,6 +336,7 @@ export default function Home() {
     return {
       active,
       completed: completed.length,
+      protectedCount,
       failed: errorCount + cancelledCount,
       p50Ttft: percentile(ttfts, 0.5),
       p95Ttft: percentile(ttfts, 0.95),
@@ -317,7 +358,33 @@ export default function Home() {
     setUsers((current) => current.map((user) => user.id === id ? { ...user, ...patch } : user));
   };
 
-  const runUser = async (id: number, currentRunId: number) => {
+  const applyGatewayTestMode = (gatewayTestMode: GatewayTestMode) => {
+    const gatewayDefaults = {
+      endpoint: "http://127.0.0.1:8787/v1",
+      model: "gemma-e2b",
+      rampMs: 0,
+      maxTokens: 128,
+      timeoutMs: 120_000,
+      uniqueSuffix: true,
+    };
+    setConfig((current) => {
+      if (gatewayTestMode === "raw-capacity") return { ...current, gatewayTestMode };
+      if (gatewayTestMode === "gateway-smoke") return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 1 };
+      if (gatewayTestMode === "same-key-limit") return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 2 };
+      return { ...current, ...gatewayDefaults, gatewayTestMode, virtualUsers: 5 };
+    });
+    setUsers([]);
+    const message = gatewayTestMode === "raw-capacity"
+      ? "Raw llama.cpp capacity mode selected. All virtual users use the single API key field."
+      : gatewayTestMode === "gateway-smoke"
+        ? "Gateway smoke check selected. Use one newly created customer key."
+        : gatewayTestMode === "same-key-limit"
+          ? "Same-key fairness check selected. The second user is expected to be blocked."
+          : "Five-key capacity check selected. Paste five separate customer keys; the fifth user is expected to be blocked.";
+    addEvent("neutral", message);
+  };
+
+  const runUser = async (id: number, currentRunId: number, apiKey: string) => {
     const controller = new AbortController();
     abortControllers.current.set(id, controller);
     const start = performance.now();
@@ -326,7 +393,7 @@ export default function Home() {
       ? `${config.prompt.trim()}\n\nVirtual user ${id}: produce an independent answer.`
       : config.prompt.trim();
 
-    updateUser(id, { status: "waiting", startedAt: start });
+    updateUser(id, { status: "waiting", startedAt: start, keyPrefix: apiKey ? keyPrefix(apiKey) : undefined });
     addEvent("neutral", `VU-${String(id).padStart(2, "0")} dispatched to the model server.`);
 
     try {
@@ -335,7 +402,7 @@ export default function Home() {
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          ...(config.apiKey.trim() ? { Authorization: `Bearer ${config.apiKey.trim()}` } : {}),
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify({
           model: config.model.trim(),
@@ -350,8 +417,15 @@ export default function Home() {
 
       const responseStartMs = performance.now() - start;
       if (!response.ok) {
-        const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 180);
-        throw new Error(`${response.status} ${response.statusText}${detail ? ` — ${detail}` : ""}`);
+        const detail = readableGatewayError(response.status, await response.text());
+        const expected = expectedGatewayBlock(config.gatewayTestMode, id);
+        if (response.status === 429 && expected === detail.code) {
+          const elapsedMs = performance.now() - start;
+          updateUser(id, { status: "protected", elapsedMs, responseStartMs, error: detail.message, policyResult: detail.code });
+          addEvent("good", `VU-${String(id).padStart(2, "0")} was correctly blocked by the gateway: ${detail.code}.`);
+          return;
+        }
+        throw new Error(`${response.status} ${detail.code} — ${detail.message}`);
       }
       if (!response.body) throw new Error("The endpoint returned no response stream.");
 
@@ -460,10 +534,19 @@ export default function Home() {
       addEvent("bad", "Endpoint, model, and prompt are required before a test can start.");
       return;
     }
+    const pooledKeys = keyPool(config.apiKeyPool);
+    if ((config.gatewayTestMode === "gateway-smoke" || config.gatewayTestMode === "same-key-limit") && !config.apiKey.trim()) {
+      addEvent("bad", "Paste one invited-user key before running this gateway test.");
+      return;
+    }
+    if (config.gatewayTestMode === "global-capacity-limit" && pooledKeys.length < config.virtualUsers) {
+      addEvent("bad", `Paste ${config.virtualUsers} separate invited-user keys, one per line, before this capacity test.`);
+      return;
+    }
 
     const nextRunId = runId.current + 1;
     runId.current = nextRunId;
-    const scenarios = Array.from({ length: config.virtualUsers }, (_, index) => ({ id: index + 1, status: "queued" as UserStatus, output: "", reasoning: "" }));
+    const scenarios = Array.from({ length: config.virtualUsers }, (_, index) => ({ id: index + 1, status: "queued" as UserStatus, output: "", reasoning: "", keyPrefix: config.gatewayTestMode === "global-capacity-limit" ? keyPrefix(pooledKeys[index]) : config.apiKey.trim() ? keyPrefix(config.apiKey.trim()) : undefined }));
     setUsers(scenarios);
     setIsRunning(true);
     addEvent("neutral", `Starting ${config.virtualUsers} virtual users with a ${config.rampMs} ms launch ramp.`);
@@ -471,7 +554,8 @@ export default function Home() {
     await Promise.allSettled(scenarios.map(async (user, index) => {
       if (index > 0) await wait(index * config.rampMs);
       if (nextRunId !== runId.current) return;
-      await runUser(user.id, nextRunId);
+      const apiKey = config.gatewayTestMode === "global-capacity-limit" ? pooledKeys[user.id - 1] : config.apiKey.trim();
+      await runUser(user.id, nextRunId, apiKey);
     }));
 
     if (nextRunId === runId.current) {
@@ -544,6 +628,17 @@ export default function Home() {
 
           <div className="space-y-5 p-5">
             <label className="block">
+              <span className="panel-label">Test recipe</span>
+              <select className="mono mt-2 h-10 w-full rounded-md border border-stone-700 bg-stone-950/60 px-3 text-xs text-stone-100 outline-none transition-colors focus:border-orange-300" value={config.gatewayTestMode} onChange={(event) => applyGatewayTestMode(event.target.value as GatewayTestMode)} disabled={isRunning}>
+                <option value="raw-capacity">Raw llama.cpp capacity test</option>
+                <option value="gateway-smoke">Gateway smoke check — 1 key, 1 user</option>
+                <option value="same-key-limit">Gateway fairness check — 1 key, 2 users</option>
+                <option value="global-capacity-limit">Gateway capacity check — 5 keys, 5 users</option>
+              </select>
+              <span className="mono mt-1.5 block text-[10px] leading-4 text-stone-500">Choose a recipe and the dashboard fills the safe endpoint, model name, users, ramp, and output cap.</span>
+            </label>
+
+            <label className="block">
               <span className="panel-label">Endpoint base URL</span>
               <div className="mt-2 flex gap-2">
                 <Input className="mono h-10 border-stone-700 bg-stone-950/60 text-xs text-stone-100 placeholder:text-stone-600" value={config.endpoint} onChange={(event) => setConfig((current) => ({ ...current, endpoint: event.target.value }))} placeholder="http://127.0.0.1:8080/v1" disabled={isRunning} />
@@ -553,14 +648,22 @@ export default function Home() {
             </label>
 
             <label className="block">
-              <span className="panel-label">API key <span className="normal-case tracking-normal text-stone-600">optional for local test</span></span>
+              <span className="panel-label">API key <span className="normal-case tracking-normal text-stone-600">{config.gatewayTestMode === "raw-capacity" ? "optional for local test" : "one invited-user key"}</span></span>
               <div className="relative mt-2">
                 <KeyRound className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-500" />
                 <Input className="mono h-10 border-stone-700 bg-stone-950/60 pl-9 pr-10 text-xs text-stone-100 placeholder:text-stone-600" value={config.apiKey} onChange={(event) => setConfig((current) => ({ ...current, apiKey: event.target.value }))} type={showKey ? "text" : "password"} placeholder="sk-…" autoComplete="off" disabled={isRunning} />
                 <button type="button" className="absolute right-3 top-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-500 transition-colors hover:text-stone-200" onClick={() => setShowKey((current) => !current)} disabled={isRunning}>{showKey ? "hide" : "show"}</button>
               </div>
-              <span className="mono mt-1.5 block text-[10px] leading-4 text-stone-500">Held only in this browser session. Never paste a production master key.</span>
+              <span className="mono mt-1.5 block text-[10px] leading-4 text-stone-500">Held only in this browser session. Paste a customer key, never an admin token or master secret.</span>
             </label>
+
+            {config.gatewayTestMode === "global-capacity-limit" && (
+              <label className="block">
+                <span className="panel-label">Five separate invited-user keys</span>
+                <Textarea className="mono mt-2 min-h-28 resize-y border-stone-700 bg-stone-950/60 text-xs leading-5 text-stone-100 placeholder:text-stone-600" value={config.apiKeyPool} onChange={(event) => setConfig((current) => ({ ...current, apiKeyPool: event.target.value }))} placeholder={"gma_live_first...\ngma_live_second...\ngma_live_third...\ngma_live_fourth...\ngma_live_fifth..."} autoComplete="off" disabled={isRunning} />
+                <span className="mono mt-1.5 block text-[10px] leading-4 text-stone-500">Paste one customer key per line. The first four should run; the fifth should show a successful gateway block.</span>
+              </label>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block col-span-2">
@@ -701,6 +804,7 @@ export default function Home() {
               <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4">
                 <div><dt className="panel-label">Completed</dt><dd className="mono mt-1 text-xl font-semibold text-teal-200">{metrics.completed}</dd></div>
                 <div><dt className="panel-label">Failed / stopped</dt><dd className={`mono mt-1 text-xl font-semibold ${metrics.failed ? "text-red-200" : "text-stone-200"}`}>{metrics.failed}</dd></div>
+                <div><dt className="panel-label">Gateway blocks</dt><dd className="mono mt-1 text-xl font-semibold text-orange-200">{metrics.protectedCount}</dd></div>
                 <div><dt className="panel-label">p50 elapsed</dt><dd className="mono mt-1 text-sm text-stone-200">{formatMs(metrics.p50Elapsed)}</dd></div>
                 <div><dt className="panel-label">Server-reported output</dt><dd className="mono mt-1 text-sm text-stone-200">{metrics.reportingUsers ? `${metrics.totalCompletionTokens} tok` : "not reported"}</dd></div>
               </dl>
