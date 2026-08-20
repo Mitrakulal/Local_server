@@ -44,7 +44,22 @@
 - [x] Create and publish one consolidated beginner-friendly Mac mini gateway administrator runbook covering setup, operation, keys, service control, testing, and public-exposure safety gates.
 - [ ] Install the validated gateway as a user-level macOS launchd service and prove the health check survives an SSH disconnect.
 - [ ] Configure Cloudflare Tunnel to route a dedicated API hostname to loopback gateway port 8787 only; never expose llama.cpp port 8080.
+- [x] Verify the external Cloudflare health route at `https://google.mattrlabs.online/healthz` reaches the protected gateway and returns `200` with backend reachable.
+- [x] Verify an unauthenticated external request to `https://google.mattrlabs.online/v1/chat/completions` returns the gateway's `401 invalid_api_key` response.
+- [x] Re-run the authenticated public streaming check with PowerShell syntax, using backticks rather than Command Prompt caret continuations and a private key entered at a secure prompt.
+- [x] Re-run the authenticated PowerShell stream with a pre-built JSON body and no multiline `try` block after the prior request reached the gateway but was rejected only for malformed JSON.
+- [x] Re-run the authenticated public stream using PowerShell-native JSON serialization after curl.exe repeatedly submitted malformed JSON arguments; confirm SSE ended with `data: [DONE]` under the intentional 128-token test cap.
+- [ ] Design and implement a private owner-only port-3000 administration interface for customer-key usage, limits, server health, gateway metrics, and controlled testing; keep it unavailable through the public Cloudflare API hostname.
+- [ ] Add server-side owner authentication and gateway-admin proxying so browser code never receives `GATEWAY_ADMIN_TOKEN` or raw API keys.
+- [ ] Add real per-key usage, event, health, and safe key-operation views to the private owner console while retaining the existing load-testing lab.
+- [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
+- [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.
+- [x] Select `google.mattrlabs.online` as the intentional Phase 2 public API hostname.
+- [x] Inspect and safely update the locally managed cloudflared YAML ingress rules with a dedicated API hostname that targets only `http://127.0.0.1:8787` and retains a final catch-all rule.
+- [x] Re-run the safely aborted API-route YAML insertion using indentation-aware matching, then validate the configuration before reloading cloudflared.
+- [x] Identify the active locally managed tunnel configuration as `~/.cloudflared/config.yml` and the root-level `com.cloudflare.cloudflared` service, preserving its existing SSH and chatbot routes.
 - [ ] Protect the admin metrics hostname with Cloudflare Access and add a coarse edge rate rule before inviting external users.
 - [ ] Verify one authenticated external API request through Cloudflare, then record the Phase 2 public-readiness result.
+- [ ] Verify the dashboard uses the matching SSH tunnel for Raw llama.cpp mode or selects gateway mode for protected port-8787 tests without exposing port 8080 publicly.
 - [x] Confirm the existing port-8787 gateway process remains healthy rather than attempting to start a second gateway instance.
 - [x] Populate the dashboard capacity-test key-pool box with five replacement keys, one key per line, and verify only the fifth is protected.

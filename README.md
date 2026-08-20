@@ -10,17 +10,18 @@ The Stage 1 implementation now lives in [`gateway/`](gateway/). It keeps llama.c
 
 ## Documentation map
 
-| Document | Use it for |
-|---|---|
-| [Operator guide](docs/PHASE0_OPERATOR_GUIDE.md) | Full setup, CORS, key handling, dashboard operation, metric interpretation, and troubleshooting. |
-| [Laptop-to-Mac-mini guide](docs/LAPTOP_TO_MAC_MINI_TESTING.md) | Every SSH, dashboard, model-port, and first benchmark command for testing from a separate laptop. |
-| [Test plan](docs/PHASE0_TEST_PLAN.md) | Repeatable baseline, concurrency, context, output, and recovery experiments. |
-| [Results template](docs/PHASE0_RESULTS_TEMPLATE.md) | Recording measurements and choosing tested operating limits. |
-| [Verified Gemma E2B benchmark](docs/BENCHMARK_GEMMA_E2B_MAC_MINI.md) | The observed Mac mini six-user test, four active-request boundary, queue evidence, and recommended initial gateway limits. |
-| [Phase 1 handoff](docs/PHASE1_HANDOFF.md) | Turning the measured limits into gateway policy for a protected multi-tenant API. |
-| [Phase 1 local gateway validation](docs/PHASE1_LOCAL_GATEWAY_VALIDATION.md) | The completed local smoke, fairness, and five-key capacity tests, plus the remaining requirements before public exposure. |
-| [Mac mini gateway administrator runbook](docs/ADMIN_RUNBOOK_MAC_MINI_GATEWAY.md) | One complete owner guide for setup, service control, keys, testing, daily checks, and public-exposure safety gates. |
-| [Phase 2 Cloudflare Tunnel runbook](docs/PHASE2_CLOUDFLARE_TUNNEL_RUNBOOK.md) | Gateway-only public route, external verification, edge rate limiting, and the rules that keep the model and administration private. |
+| Document                                                                         | Use it for                                                                                                                          |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [Operator guide](docs/PHASE0_OPERATOR_GUIDE.md)                                  | Full setup, CORS, key handling, dashboard operation, metric interpretation, and troubleshooting.                                    |
+| [Laptop-to-Mac-mini guide](docs/LAPTOP_TO_MAC_MINI_TESTING.md)                   | Every SSH, dashboard, model-port, and first benchmark command for testing from a separate laptop.                                   |
+| [Test plan](docs/PHASE0_TEST_PLAN.md)                                            | Repeatable baseline, concurrency, context, output, and recovery experiments.                                                        |
+| [Results template](docs/PHASE0_RESULTS_TEMPLATE.md)                              | Recording measurements and choosing tested operating limits.                                                                        |
+| [Verified Gemma E2B benchmark](docs/BENCHMARK_GEMMA_E2B_MAC_MINI.md)             | The observed Mac mini six-user test, four active-request boundary, queue evidence, and recommended initial gateway limits.          |
+| [Phase 1 handoff](docs/PHASE1_HANDOFF.md)                                        | Turning the measured limits into gateway policy for a protected multi-tenant API.                                                   |
+| [Phase 1 local gateway validation](docs/PHASE1_LOCAL_GATEWAY_VALIDATION.md)      | The completed local smoke, fairness, and five-key capacity tests, plus the remaining requirements before public exposure.           |
+| [Mac mini gateway administrator runbook](docs/ADMIN_RUNBOOK_MAC_MINI_GATEWAY.md) | One complete owner guide for setup, service control, keys, testing, daily checks, and public-exposure safety gates.                 |
+| [Phase 2 Cloudflare Tunnel runbook](docs/PHASE2_CLOUDFLARE_TUNNEL_RUNBOOK.md)    | Gateway-only public route, external verification, edge rate limiting, and the rules that keep the model and administration private. |
+| [Private Owner Console](docs/PRIVATE_OWNER_CONSOLE.md)                           | Owner-only port-3000 usage, key, server-health, request-activity, and load-testing workflow.                                        |
 
 ## Local launch
 

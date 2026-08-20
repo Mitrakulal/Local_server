@@ -1,20 +1,22 @@
 /** Stage 1 acceptance tests: gateway policy must reject excess work before llama.cpp is called. */
-import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import http from 'node:http';
-import os from 'node:os';
-import path from 'node:path';
-import test from 'node:test';
-import { createGateway } from '../src/gateway.mjs';
-import { GatewayStore } from '../src/store.mjs';
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { createGateway } from "../src/gateway.mjs";
+import { GatewayStore } from "../src/store.mjs";
 
 async function listen(server) {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   return server.address().port;
 }
 
 async function close(server) {
-  await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  await new Promise((resolve, reject) =>
+    server.close(error => (error ? reject(error) : resolve()))
+  );
 }
 
 async function createFixture({ delayMs = 40, globalConcurrent = 4 } = {}) {
@@ -22,26 +24,32 @@ async function createFixture({ delayMs = 40, globalConcurrent = 4 } = {}) {
   const backend = http.createServer((req, res) => {
     backendCalls += 1;
     setTimeout(() => {
-      res.writeHead(200, { 'content-type': 'text/event-stream' });
-      res.write('data: {"choices":[{"delta":{"reasoning_content":"Thinking"},"finish_reason":null}]}\n\n');
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write(
+        'data: {"choices":[{"delta":{"reasoning_content":"Thinking"},"finish_reason":null}]}\n\n'
+      );
       setTimeout(() => {
-        res.write('data: {"choices":[{"delta":{"content":" answer"},"finish_reason":"stop"}],"usage":{"completion_tokens":2}}\n\n');
-        res.end('data: [DONE]\n\n');
+        res.write(
+          'data: {"choices":[{"delta":{"content":" answer"},"finish_reason":"stop"}],"usage":{"completion_tokens":2}}\n\n'
+        );
+        res.end("data: [DONE]\n\n");
       }, delayMs);
     }, delayMs);
   });
   const backendPort = await listen(backend);
-  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'gateway-test-'));
+  const temporaryDirectory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "gateway-test-")
+  );
   const config = {
-    bindHost: '127.0.0.1',
+    bindHost: "127.0.0.1",
     port: 0,
     llamaBaseUrl: `http://127.0.0.1:${backendPort}/v1`,
-    llamaApiKey: '',
-    publicModelAlias: 'gemma-e2b',
-    backendModel: 'ggml-org/gemma-4-E2B-it-GGUF:Q8_0',
-    keyPepper: 'test-pepper-that-is-longer-than-thirty-two-characters',
-    adminToken: 'test-admin-token-that-is-longer-than-thirty-two-characters',
-    databasePath: path.join(temporaryDirectory, 'gateway.sqlite'),
+    llamaApiKey: "",
+    publicModelAlias: "gemma-e2b",
+    backendModel: "ggml-org/gemma-4-E2B-it-GGUF:Q8_0",
+    keyPepper: "test-pepper-that-is-longer-than-thirty-two-characters",
+    adminToken: "test-admin-token-that-is-longer-than-thirty-two-characters",
+    databasePath: path.join(temporaryDirectory, "gateway.sqlite"),
     globalConcurrent,
     perKeyConcurrent: 1,
     defaultMaxOutput: 64,
@@ -56,10 +64,23 @@ async function createFixture({ delayMs = 40, globalConcurrent = 4 } = {}) {
     corsOrigins: [],
   };
   const store = new GatewayStore(config.databasePath, config.keyPepper);
-  const gateway = createGateway({ config, store, logger: { info() {}, error() {} } });
+  const gateway = createGateway({
+    config,
+    store,
+    logger: { info() {}, error() {} },
+  });
   await gateway.start();
   const gatewayPort = gateway.server.address().port;
-  const createKey = (name) => store.createKey({ tenantId: name, label: name, expiresAt: null, activeLimit: 1, rpmLimit: 1000, dailyRequestLimit: 1000, maxOutput: 64 });
+  const createKey = name =>
+    store.createKey({
+      tenantId: name,
+      label: name,
+      expiresAt: null,
+      activeLimit: 1,
+      rpmLimit: 1000,
+      dailyRequestLimit: 1000,
+      maxOutput: 64,
+    });
   return {
     baseUrl: `http://127.0.0.1:${gatewayPort}`,
     createKey,
@@ -76,16 +97,28 @@ async function createFixture({ delayMs = 40, globalConcurrent = 4 } = {}) {
 
 function chatRequest(baseUrl, apiKey, overrides = {}) {
   return fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: 'gemma-e2b', stream: true, max_tokens: 32, messages: [{ role: 'user', content: 'hello' }], ...overrides }),
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gemma-e2b",
+      stream: true,
+      max_tokens: 32,
+      messages: [{ role: "user", content: "hello" }],
+      ...overrides,
+    }),
   });
 }
 
-test('rejects a request with an invalid API key before backend dispatch', async () => {
+test("rejects a request with an invalid API key before backend dispatch", async () => {
   const fixture = await createFixture();
   try {
-    const response = await chatRequest(fixture.baseUrl, 'gma_live_not-a-real-key');
+    const response = await chatRequest(
+      fixture.baseUrl,
+      "gma_live_not-a-real-key"
+    );
     assert.equal(response.status, 401);
     assert.equal(fixture.calls(), 0);
   } finally {
@@ -93,10 +126,10 @@ test('rejects a request with an invalid API key before backend dispatch', async 
   }
 });
 
-test('forwards SSE while recording reasoning-compatible stream metadata', async () => {
+test("forwards SSE while recording reasoning-compatible stream metadata", async () => {
   const fixture = await createFixture();
   try {
-    const key = fixture.createKey('one');
+    const key = fixture.createKey("one");
     const response = await chatRequest(fixture.baseUrl, key.rawKey);
     const body = await response.text();
     assert.equal(response.status, 200);
@@ -108,15 +141,15 @@ test('forwards SSE while recording reasoning-compatible stream metadata', async 
   }
 });
 
-test('rejects a second simultaneous generation from the same key before backend dispatch', async () => {
+test("rejects a second simultaneous generation from the same key before backend dispatch", async () => {
   const fixture = await createFixture({ delayMs: 120 });
   try {
-    const key = fixture.createKey('one');
+    const key = fixture.createKey("one");
     const first = chatRequest(fixture.baseUrl, key.rawKey);
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    await new Promise(resolve => setTimeout(resolve, 15));
     const second = await chatRequest(fixture.baseUrl, key.rawKey);
     assert.equal(second.status, 429);
-    assert.equal((await second.json()).error.code, 'key_concurrency_exceeded');
+    assert.equal((await second.json()).error.code, "key_concurrency_exceeded");
     await (await first).text();
     assert.equal(fixture.calls(), 1);
   } finally {
@@ -124,52 +157,113 @@ test('rejects a second simultaneous generation from the same key before backend 
   }
 });
 
-test('rejects the fifth concurrent key before backend dispatch', async () => {
+test("rejects the fifth concurrent key before backend dispatch", async () => {
   const fixture = await createFixture({ delayMs: 140, globalConcurrent: 4 });
   try {
-    const keys = Array.from({ length: 5 }, (_, index) => fixture.createKey(`tenant-${index}`));
-    const firstFour = keys.slice(0, 4).map((key) => chatRequest(fixture.baseUrl, key.rawKey));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    const keys = Array.from({ length: 5 }, (_, index) =>
+      fixture.createKey(`tenant-${index}`)
+    );
+    const firstFour = keys
+      .slice(0, 4)
+      .map(key => chatRequest(fixture.baseUrl, key.rawKey));
+    await new Promise(resolve => setTimeout(resolve, 20));
     const fifth = await chatRequest(fixture.baseUrl, keys[4].rawKey);
     assert.equal(fifth.status, 429);
-    assert.equal((await fifth.json()).error.code, 'capacity_busy');
-    await Promise.all((await Promise.all(firstFour)).map((response) => response.text()));
+    assert.equal((await fifth.json()).error.code, "capacity_busy");
+    await Promise.all(
+      (await Promise.all(firstFour)).map(response => response.text())
+    );
     assert.equal(fixture.calls(), 4);
   } finally {
     await fixture.cleanup();
   }
 });
 
-test('rejects an output budget above the key policy before backend dispatch', async () => {
+test("rejects an output budget above the key policy before backend dispatch", async () => {
   const fixture = await createFixture();
   try {
-    const key = fixture.createKey('one');
-    const response = await chatRequest(fixture.baseUrl, key.rawKey, { max_tokens: 65 });
+    const key = fixture.createKey("one");
+    const response = await chatRequest(fixture.baseUrl, key.rawKey, {
+      max_tokens: 65,
+    });
     assert.equal(response.status, 422);
-    assert.equal((await response.json()).error.code, 'output_limit_exceeded');
+    assert.equal((await response.json()).error.code, "output_limit_exceeded");
     assert.equal(fixture.calls(), 0);
   } finally {
     await fixture.cleanup();
   }
 });
 
-test('lists only non-secret key metadata and revokes every active key with an explicit owner action', async () => {
+test("lists only non-secret key metadata and revokes every active key with an explicit owner action", async () => {
   const fixture = await createFixture();
   try {
-    const first = fixture.createKey('first');
-    const second = fixture.createKey('second');
-    const active = fixture.store.listKeys('active');
+    const first = fixture.createKey("first");
+    const second = fixture.createKey("second");
+    const active = fixture.store.listKeys("active");
     assert.equal(active.length, 2);
     assert.equal(active[0].prefix, first.prefix);
     assert.equal(active[1].prefix, second.prefix);
-    assert.equal('secret_hash' in active[0], false);
-    assert.equal('rawKey' in active[0], false);
+    assert.equal("secret_hash" in active[0], false);
+    assert.equal("rawKey" in active[0], false);
     assert.equal(fixture.store.revokeAllActiveKeys(), 2);
-    assert.equal(fixture.store.listKeys('active').length, 0);
-    assert.equal(fixture.store.listKeys('revoked').length, 2);
+    assert.equal(fixture.store.listKeys("active").length, 0);
+    assert.equal(fixture.store.listKeys("revoked").length, 2);
     const rejected = await chatRequest(fixture.baseUrl, first.rawKey);
     assert.equal(rejected.status, 401);
     assert.equal(fixture.calls(), 0);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("provides owner telemetry and safe key operations only after administrator authentication", async () => {
+  const fixture = await createFixture();
+  try {
+    const key = fixture.createKey("customer-one");
+    await (await chatRequest(fixture.baseUrl, key.rawKey)).text();
+
+    const rejected = await fetch(`${fixture.baseUrl}/admin/v1/overview`);
+    assert.equal(rejected.status, 401);
+
+    const headers = {
+      "x-admin-token":
+        "test-admin-token-that-is-longer-than-thirty-two-characters",
+    };
+    const overview = await fetch(`${fixture.baseUrl}/admin/v1/overview`, {
+      headers,
+    });
+    assert.equal(overview.status, 200);
+    assert.equal((await overview.json()).health.backend, "reachable");
+
+    const keys = await fetch(`${fixture.baseUrl}/admin/v1/keys`, { headers });
+    const keyPayload = await keys.json();
+    assert.equal(keyPayload.keys.length, 1);
+    assert.equal(keyPayload.keys[0].prefix, key.prefix);
+    assert.equal("secret_hash" in keyPayload.keys[0], false);
+
+    const events = await fetch(`${fixture.baseUrl}/admin/v1/events?limit=5`, {
+      headers,
+    });
+    assert.equal((await events.json()).events[0].prefix, key.prefix);
+
+    const created = await fetch(`${fixture.baseUrl}/admin/v1/keys`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({
+        tenant_id: "customer-two",
+        label: "Customer two",
+        expires_days: 30,
+      }),
+    });
+    const createdPayload = await created.json();
+    assert.equal(created.status, 201);
+    assert.match(createdPayload.api_key, /^gma_live_/);
+    const revoked = await fetch(`${fixture.baseUrl}/admin/v1/keys/revoke`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ prefix: createdPayload.prefix }),
+    });
+    assert.equal(revoked.status, 200);
   } finally {
     await fixture.cleanup();
   }

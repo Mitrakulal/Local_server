@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createOwnerConsoleProxy } from "./ownerConsoleProxy.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,9 @@ async function startServer() {
       ? path.resolve(__dirname, "public")
       : path.resolve(__dirname, "..", "dist", "public");
 
+  // Instrument Panel style: port 3000 is a trusted owner console; its browser
+  // never sees the gateway admin token because this local server proxies it.
+  app.use("/admin/api", createOwnerConsoleProxy());
   app.use(express.static(staticPath));
 
   // Handle client-side routing - serve index.html for all routes
