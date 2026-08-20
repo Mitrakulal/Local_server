@@ -19,6 +19,7 @@ The Stage 1 implementation now lives in [`gateway/`](gateway/). It keeps llama.c
 | [Verified Gemma E2B benchmark](docs/BENCHMARK_GEMMA_E2B_MAC_MINI.md) | The observed Mac mini six-user test, four active-request boundary, queue evidence, and recommended initial gateway limits. |
 | [Phase 1 handoff](docs/PHASE1_HANDOFF.md) | Turning the measured limits into gateway policy for a protected multi-tenant API. |
 | [Phase 1 local gateway validation](docs/PHASE1_LOCAL_GATEWAY_VALIDATION.md) | The completed local smoke, fairness, and five-key capacity tests, plus the remaining requirements before public exposure. |
+| [Mac mini gateway administrator runbook](docs/ADMIN_RUNBOOK_MAC_MINI_GATEWAY.md) | One complete owner guide for setup, service control, keys, testing, daily checks, and public-exposure safety gates. |
 
 ## Local launch
 

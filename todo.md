@@ -41,6 +41,7 @@
 - [x] Create a private owner test key with the measured 8K output allowance while retaining bounded default customer-key output policies.
 - [ ] Rotate every exposed test API key by prefix, create fresh owner and invited-user replacements, and verify revoked keys are rejected.
 - [ ] Add and validate an owner-only CLI view of non-secret active-key metadata plus an explicit bulk-revocation command for local test-key cleanup.
+- [ ] Create and publish one consolidated beginner-friendly Mac mini gateway administrator runbook covering setup, operation, keys, service control, testing, and public-exposure safety gates.
 - [ ] Install the validated gateway as a user-level macOS launchd service and prove the health check survives an SSH disconnect.
 - [ ] Configure Cloudflare Tunnel to route a dedicated API hostname to loopback gateway port 8787 only; never expose llama.cpp port 8080.
 - [ ] Protect the admin metrics hostname with Cloudflare Access and add a coarse edge rate rule before inviting external users.
