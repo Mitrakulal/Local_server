@@ -129,7 +129,7 @@ export function createOwnerChatProxy() {
             {
               role: "system",
               content:
-                "You are a concise, thoughtful local assistant. Be accurate, clear, and direct.",
+                "You are a concise, thoughtful local assistant. Give a polished, direct final answer in normal content. Do not narrate planning steps or use headings such as Analyze Request, Draft Response, or Final Output. If a brief user-facing reasoning summary is useful, keep it compact and separate when the runtime supports a reasoning field. Do not reveal private chain-of-thought.",
             },
             ...messages,
           ],
@@ -174,4 +174,3 @@ export function createOwnerChatProxy() {
     }
   };
 }
-
