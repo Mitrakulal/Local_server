@@ -4,6 +4,7 @@
 - [ ] Consolidate the live chat, customer API-key service, Owner Console, usage controls, and operating documentation into one clear small-LLM-provider product model.
 - [ ] Upgrade the private Owner Console into a Provider Command Center with a live service map, API onboarding guidance, and explicit launch-safety gates while preserving its SSH-only boundary.
 - [ ] Produce and maintain a prioritized interface, API, admin, operations, security, and commercial-readiness gap register for the live provider service.
+- [x] Refresh the public repository README with the current provider architecture, public API contract, private operator surfaces, safe setup guidance, and an explicit no-secrets policy.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
