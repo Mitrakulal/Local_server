@@ -1,5 +1,5 @@
 /**
- * Instrument Panel style: an asymmetric load laboratory with a fixed setup rail,
+ * Instrument Panel style: a private /lab load laboratory with a fixed setup rail,
  * a central live capacity field, and a stream-evidence strip for each virtual user.
  */
 import { Button } from "@/components/ui/button";
@@ -954,6 +954,12 @@ export default function Home() {
               className="mono rounded-md border border-orange-300/25 bg-orange-300/[0.06] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-200 transition-colors hover:bg-orange-300/15"
             >
               Owner console
+            </Link>
+            <Link
+              href="/"
+              className="mono rounded-md border border-stone-700 bg-stone-900/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-300 transition-colors hover:bg-stone-800 hover:text-stone-100"
+            >
+              Owner chat
             </Link>
           </div>
         </div>

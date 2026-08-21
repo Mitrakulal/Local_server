@@ -56,6 +56,10 @@
 - [x] Restart the port-3000 owner console after confirming the current `OWNER_CONSOLE_TOKEN`, then verify authenticated telemetry loads without an owner-console authentication error.
 - [x] Add real per-key usage, event, health, and safe key-operation views to the private owner console while retaining the existing load-testing lab.
 - [x] Research recent public requests for affordable, privacy-conscious, small-scale LLM API access that fit the verified four-active-request Gemma gateway, then prepare an ethical outreach shortlist using original public post links only.
+- [x] Design and build the session-scoped same-host ChatGPT-style owner chat UI, secure server-side chat proxy, and local port-3001 router without exposing a master API key to the browser.
+- [x] Implement and test local same-host routing so `google.mattrlabs.online` can later dispatch browser chat at `/` and preserve `/v1/*` API paths through the existing gateway.
+- [ ] Create the owner-chat secrets and internal `owner-chat` gateway key on the Mac mini, then validate local chat streaming and `/v1` API preservation through port 3001.
+- [ ] Install the validated port-3001 chat router as a user-level launchd service and only then switch the Cloudflare tunnel target from port 8787 to port 3001 with rollback ready.
 - [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
 - [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.
 - [x] Select `google.mattrlabs.online` as the intentional Phase 2 public API hostname.

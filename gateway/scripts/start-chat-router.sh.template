@@ -1,0 +1,6 @@
+#!/bin/zsh
+# Same-host owner chat: load local secrets, then run the loopback-only router.
+set -euo pipefail
+
+cd "__PROJECT_DIRECTORY__"
+exec __PNPM_BINARY__ chat:start

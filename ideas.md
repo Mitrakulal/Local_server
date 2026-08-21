@@ -72,3 +72,65 @@ The mark is a bold orange calibration ring interrupted by three offset tick mark
 - The central observation field must foreground a segmented request-lane capacity meter, queue depth, active work, and completed work before explanatory copy.
 - The right-hand run tape maintains technical density in idle state through timestamped slots, channel markers, and compact event counters.
 - The wordmark uses a visible Calibration Orange baseline beneath `LOAD`, reinforcing that the calibration-ring icon and name form one proprietary unit.
+
+## Same-host owner chat — Design Directions
+
+### 1. Nocturne Ledger
+**Very Brief Intro:** A calm midnight writing room where the conversation feels like a living record rather than a generic chatbot. Warm brass, ink-black surfaces, and restrained motion give responses a considered, human pace.
+
+**Probability:** 0.071
+
+### 2. Cloud Atlas
+**Very Brief Intro:** A bright, airy conversational workspace with soft paper fields, blurred sky gradients, and generous editorial rhythm. It feels approachable and reflective rather than technical.
+
+**Probability:** 0.046
+
+### 3. Field Signal
+**Very Brief Intro:** A compact expedition console with low-light topography, signal marks, and an asymmetric navigation edge. It feels energetic and exploratory while remaining disciplined enough for long text sessions.
+
+**Probability:** 0.089
+
+## Chosen chat approach: Nocturne Ledger
+
+### Design Movement
+Contemporary editorial minimalism combined with a low-light writing desk aesthetic. It is intentionally separate from the operational Instrument Panel used by the private Load Lab.
+
+### Core Principles
+1. Conversation is the primary artifact: messages receive quiet, readable space and never compete with dashboard-like metrics.
+2. The interface feels composed rather than glossy: texture, shadow, and material contrast replace neon gradients and generic rounded cards.
+3. The application reveals its bounded nature clearly through compact capacity and session indicators rather than promotional claims.
+4. Motion is purposeful: a response arrives in a gentle upward reveal while high-frequency controls remain immediate.
+
+### Color Philosophy
+Ink-black and deep plum create a focused night-writing field; weathered brass marks intentional actions and the service identity; parchment text areas provide relief without turning the interface into a bright generic messenger. A muted moss signal denotes a healthy connected model.
+
+### Layout Paradigm
+The desktop view is an asymmetric editorial desk: a narrow left rail for the current local session and clear-chat action, a tall central conversation folio, and a slender right margin for live model/capacity context. On mobile, the rails collapse into compact top and bottom sheets while the conversation remains full width.
+
+### Signature Elements
+1. A small brass `oracle aperture` mark, formed from an interrupted ring and horizontal answer line.
+2. A subtle paper-grain conversation folio floating over an ink field.
+3. An `alive` response cursor that becomes a calm brass rule when streaming finishes.
+
+### Interaction Philosophy
+The composer treats each prompt as a deliberate entry: Enter sends, Shift+Enter adds a line, and Clear conversation explicitly resets browser-session history. No fake saved history, ratings, testimonials, or activity counters are shown.
+
+### Animation
+Use transform/opacity transitions between 140–260ms with a crisp custom ease. New messages rise by 6px while fading in; streaming state uses a slow opacity pulse on the response cursor. Respect reduced-motion preferences and avoid animated gradients.
+
+### Typography System
+Use **DM Sans** for controls and compact labels, **Fraunces** for the welcome/empty-state editorial headline, and **IBM Plex Mono** for model/capacity technical context. Conversation body uses DM Sans at a comfortable reading measure.
+
+### Brand Essence
+**A quiet private writing room for direct conversations with a carefully bounded local model.**
+
+**Personality:** deliberate, warm, lucid.
+
+### Brand Voice
+Headlines are brief and literary without being vague; system copy names real limits in plain language. Example lines: “A local mind, kept in view.” and “This conversation lives in this browser session.”
+
+### Wordmark & Logo
+The `ORBIT` mark is an interrupted brass aperture with a narrow horizontal reply line passing through its lower arc. It is symbol-first and paired with a spaced, uppercase wordmark rather than a default text logo.
+
+### Signature Brand Color
+**Weathered Brass — `#C9954B`**

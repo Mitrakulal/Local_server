@@ -160,3 +160,57 @@
     transform: translateY(0);
   }
 }
+
+/* Nocturne Ledger style: public owner chat is a midnight editorial writing room,
+   distinct from the operational Instrument Panel used by /lab and /admin. */
+.nocturne-shell {
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+.nocturne-display {
+  font-family: "Fraunces", Georgia, serif;
+  letter-spacing: -0.045em;
+}
+
+.nocturne-halo {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(139, 91, 67, 0.18), transparent 31rem),
+    radial-gradient(circle at 82% 72%, rgba(91, 72, 104, 0.15), transparent 28rem),
+    linear-gradient(135deg, #0e0d10 0%, #131015 47%, #0d0c0f 100%);
+}
+
+.chat-entry {
+  animation: nocturne-rise 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.nocturne-cursor {
+  animation: nocturne-pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes nocturne-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nocturne-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-entry,
+  .nocturne-cursor {
+    animation: none;
+  }
+}

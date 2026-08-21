@@ -1,6 +1,6 @@
 /**
- * Instrument Panel style: a dark precision-operations shell that keeps the
- * Phase 0 load-test surface focused, readable, and explicitly capacity-aware.
+ * Route contract: the public root is Nocturne Ledger owner chat; the existing
+ * Instrument Panel load lab remains available only at the private /lab route.
  */
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,12 +9,14 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AdminConsole from "./pages/AdminConsole";
+import OwnerChat from "./pages/OwnerChat";
 import Home from "./pages/Home";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={OwnerChat} />
+      <Route path="/lab" component={Home} />
       <Route path="/admin" component={AdminConsole} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

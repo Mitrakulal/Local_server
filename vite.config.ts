@@ -5,6 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { createPublicGatewayProxy } from "./server/gatewayProxy";
+import { createOwnerChatProxy } from "./server/ownerChatProxy";
 import { createOwnerConsoleProxy } from "./server/ownerConsoleProxy";
 
 // =============================================================================
@@ -223,6 +225,20 @@ function vitePluginOwnerConsoleProxy(): Plugin {
   };
 }
 
+/** Same-host chat development proxy mirrors the production port-3001 router. */
+function vitePluginSameHostChatRoutes(): Plugin {
+  return {
+    name: "same-host-chat-routes",
+    configureServer(server: ViteDevServer) {
+      const chat = createOwnerChatProxy();
+      const gateway = createPublicGatewayProxy();
+      server.middlewares.use("/chat/api", (req, res, next) => chat(req, res, next));
+      server.middlewares.use("/v1", (req, res, next) => gateway(req, res, next));
+      server.middlewares.use("/healthz", (req, res, next) => gateway(req, res, next));
+    },
+  };
+}
+
 const plugins = [
   react(),
   tailwindcss(),
@@ -231,6 +247,7 @@ const plugins = [
   vitePluginManusDebugCollector(),
   vitePluginStorageProxy(),
   vitePluginOwnerConsoleProxy(),
+  vitePluginSameHostChatRoutes(),
 ];
 
 export default defineConfig({

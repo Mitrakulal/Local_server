@@ -2,6 +2,8 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createPublicGatewayProxy } from "./gatewayProxy.js";
+import { createOwnerChatProxy } from "./ownerChatProxy.js";
 import { createOwnerConsoleProxy } from "./ownerConsoleProxy.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,9 +19,23 @@ async function startServer() {
       ? path.resolve(__dirname, "public")
       : path.resolve(__dirname, "..", "dist", "public");
 
-  // Instrument Panel style: port 3000 is a trusted owner console; its browser
-  // never sees the gateway admin token because this local server proxies it.
-  app.use("/admin/api", createOwnerConsoleProxy());
+  const port = Number(process.env.CHAT_ROUTER_PORT || process.env.PORT || 3001);
+
+  // Nocturne Ledger style: the public same-host router understands only the
+  // chat surface plus the established /v1 API. Secret-bearing admin routes
+  // remain unavailable on the public port and continue to live on port 3000.
+  if (port === 3000) app.use("/admin/api", createOwnerConsoleProxy());
+  app.use("/chat/api", createOwnerChatProxy());
+  app.use("/v1", createPublicGatewayProxy());
+  app.use("/healthz", createPublicGatewayProxy());
+  if (port !== 3000) {
+    app.use("/admin", (_req, res) =>
+      res.status(404).set("cache-control", "no-store").json({ error: "not_found" })
+    );
+    app.use("/lab", (_req, res) =>
+      res.status(404).set("cache-control", "no-store").json({ error: "not_found" })
+    );
+  }
   app.use(express.static(staticPath));
 
   // Handle client-side routing - serve index.html for all routes
@@ -27,10 +43,8 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  const port = process.env.PORT || 3000;
-
   server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+    console.log(`Same-host chat router running on http://127.0.0.1:${port}/`);
   });
 }
 

@@ -22,6 +22,8 @@ The Stage 1 implementation now lives in [`gateway/`](gateway/). It keeps llama.c
 | [Mac mini gateway administrator runbook](docs/ADMIN_RUNBOOK_MAC_MINI_GATEWAY.md) | One complete owner guide for setup, service control, keys, testing, daily checks, and public-exposure safety gates.                 |
 | [Phase 2 Cloudflare Tunnel runbook](docs/PHASE2_CLOUDFLARE_TUNNEL_RUNBOOK.md)    | Gateway-only public route, external verification, edge rate limiting, and the rules that keep the model and administration private. |
 | [Private Owner Console](docs/PRIVATE_OWNER_CONSOLE.md)                           | Owner-only port-3000 usage, key, server-health, request-activity, and load-testing workflow.                                        |
+| [Same-host Owner Chat blueprint](docs/SAME_HOST_OWNER_CHAT_BLUEPRINT.md)         | The staged `google.mattrlabs.online` chat-at-root plus `/v1` API routing design, session decision, security boundary, and cutover checks. |
+| [Same-host Owner Chat runbook](docs/SAME_HOST_OWNER_CHAT_RUNBOOK.md)             | Mac mini secret setup, local port-3001 testing, persistent service installation, controlled Cloudflare cutover, and rollback. |
 
 ## Local launch
 
