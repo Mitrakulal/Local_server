@@ -75,7 +75,12 @@
 - [x] Reproduce the remaining function-call crash locally through a real owner-chat message submission; the error is not caused by Mac mini caching alone.
 - [x] Identify the local crash in React passive-effect cleanup: concise `useEffect` callbacks returned non-void expression values, so React attempted to call a non-function cleanup during the next session update.
 - [x] Validate the isolated port-3001 production entry point with stored Thinking content; the chat loads without the private dashboard, admin, router, toast, or theme-provider graph.
-- [ ] Change the Cloudflare Tunnel target for `google.mattrlabs.online` from loopback port 8787 to the validated loopback port-3001 router, with the current port-8787 target retained as rollback.
+- [ ] Refine the owner-chat workspace with a fixed composer, independently scrollable conversation/history areas, bounded session history, and lightweight interaction polish without changing the public API contract.
+- [x] Verify the refined desktop workspace locally: the message feed is bounded above a persistent composer, history has an independent scroll region and search control, and the session list is capped to recent browser-only conversations.
+- [x] Verify history search locally: filtering the session rail does not disturb the active conversation or the fixed composer.
+- [x] Change the Cloudflare Tunnel target for `google.mattrlabs.online` from loopback port 8787 to the validated loopback port-3001 router, with the previous 8787 configuration retained in a timestamped local backup for rollback.
+- [ ] Preserve the existing `127.0.0.1:8787` Cloudflare service value as the immediate rollback target while moving `google.mattrlabs.online` to the same-host router on `127.0.0.1:3001`.
+- [ ] Verify the public chat root and authenticated public API relay after the Cloudflare cutover. Public `/healthz` returned healthy gateway JSON and an unauthenticated public API request returned the expected 401 response.
 - [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
 - [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.
 - [x] Select `google.mattrlabs.online` as the intentional Phase 2 public API hostname.

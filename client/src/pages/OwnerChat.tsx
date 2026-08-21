@@ -1,9 +1,10 @@
 /**
- * Reference-grounded chat workspace: persistent browser-session history rail,
- * focused reading column, anchored composer, and a separate Thinking disclosure.
- * CHAT_GATEWAY_KEY remains server-side.
+ * Reference-grounded chat workspace: a fixed-height private conversation shell
+ * with independently scrollable history and message areas, a stable composer,
+ * and a separate Thinking disclosure. CHAT_GATEWAY_KEY remains server-side.
  */
 import {
+  ArrowDown,
   Check,
   ChevronDown,
   Copy,
@@ -18,8 +19,18 @@ import {
   SlidersHorizontal,
   ThumbsDown,
   ThumbsUp,
+  X,
 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  KeyboardEvent,
+  UIEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type Role = "user" | "assistant";
 type ChatEntry = {
@@ -34,11 +45,15 @@ type Conversation = { id: string; title: string; messages: ChatEntry[] };
 type SessionState = { activeId: string; conversations: Conversation[] };
 
 const SESSION_KEY = "mattr-chat-workspace-v2";
+const MAX_STORED_CONVERSATIONS = 12;
+const STICKY_SCROLL_THRESHOLD = 96;
+
 const greeting = (): ChatEntry => ({
   id: crypto.randomUUID(),
   role: "assistant",
   content: "I’m here. What would you like to think through?",
 });
+
 const freshConversation = (): Conversation => ({
   id: crypto.randomUUID(),
   title: "New chat",
@@ -61,7 +76,6 @@ function normalizeEntry(value: unknown): ChatEntry | null {
     role: entry.role,
     content: entry.content,
     thinking: typeof entry.thinking === "string" ? entry.thinking : undefined,
-    // A browser refresh cannot safely resume a stream from an older bundle.
     pending: false,
     error: entry.error === true,
   };
@@ -72,20 +86,25 @@ function loadSession(): SessionState {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
     const parsed = raw ? (JSON.parse(raw) as Partial<SessionState>) : undefined;
     const conversations = Array.isArray(parsed?.conversations)
-      ? parsed.conversations.flatMap(value => {
-          if (!value || typeof value !== "object") return [];
-          const conversation = value as Record<string, unknown>;
-          if (typeof conversation.id !== "string" || !Array.isArray(conversation.messages)) return [];
-          const messages = conversation.messages
-            .map(normalizeEntry)
-            .filter((message): message is ChatEntry => message !== null);
-          return [{
-            id: conversation.id,
-            title: typeof conversation.title === "string" ? conversation.title : "New chat",
-            messages: messages.length ? messages : [greeting()],
-          }];
-        })
+      ? parsed.conversations
+          .flatMap(value => {
+            if (!value || typeof value !== "object") return [];
+            const conversation = value as Record<string, unknown>;
+            if (typeof conversation.id !== "string" || !Array.isArray(conversation.messages)) return [];
+            const messages = conversation.messages
+              .map(normalizeEntry)
+              .filter((message): message is ChatEntry => message !== null);
+            return [
+              {
+                id: conversation.id,
+                title: typeof conversation.title === "string" ? conversation.title : "New chat",
+                messages: messages.length ? messages : [greeting()],
+              },
+            ];
+          })
+          .slice(0, MAX_STORED_CONVERSATIONS)
       : [];
+
     if (conversations.length) {
       const activeId = conversations.some(conversation => conversation.id === parsed?.activeId)
         ? parsed!.activeId!
@@ -95,6 +114,7 @@ function loadSession(): SessionState {
   } catch {
     // A malformed local session is safely replaced with one empty chat.
   }
+
   const conversation = freshConversation();
   return { activeId: conversation.id, conversations: [conversation] };
 }
@@ -140,6 +160,7 @@ function BrandMark() {
 function ThinkingPanel({ message }: { message: ChatEntry }) {
   const thinking = typeof message.thinking === "string" ? message.thinking : "";
   if (!thinking) return null;
+
   return (
     <details
       className="reference-thinking mb-3 rounded-[11px] border border-[#e1e4ea] bg-[#f5f6f8] text-[#626773]"
@@ -190,38 +211,83 @@ export default function OwnerChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historySearchOpen, setHistorySearchOpen] = useState(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messageScrollRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const stickToBottomRef = useRef(true);
 
   const activeConversation = useMemo(
     () => session.conversations.find(conversation => conversation.id === session.activeId) || session.conversations[0]!,
     [session]
   );
 
+  const visibleConversations = useMemo(() => {
+    const query = historyQuery.trim().toLocaleLowerCase();
+    return query
+      ? session.conversations.filter(conversation => conversation.title.toLocaleLowerCase().includes(query))
+      : session.conversations;
+  }, [historyQuery, session.conversations]);
+
+  const scrollToLatest = (behavior: ScrollBehavior = "smooth") => {
+    stickToBottomRef.current = true;
+    setShowJumpToLatest(false);
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  };
+
   useEffect(() => {
     window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }, [session]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [activeConversation.messages, isStreaming]);
+    if (stickToBottomRef.current) {
+      window.requestAnimationFrame(() => scrollToLatest(isStreaming ? "auto" : "smooth"));
+    }
+  }, [activeConversation.messages, isStreaming, session.activeId]);
+
+  useEffect(() => {
+    if (!draft && composerRef.current) composerRef.current.style.height = "auto";
+  }, [draft]);
 
   const updateActive = (apply: (conversation: Conversation) => Conversation) => {
-    setSession(current => ({ ...current, conversations: current.conversations.map(conversation => conversation.id === current.activeId ? apply(conversation) : conversation) }));
+    setSession(current => ({
+      ...current,
+      conversations: current.conversations.map(conversation =>
+        conversation.id === current.activeId ? apply(conversation) : conversation
+      ),
+    }));
   };
+
   const createConversation = () => {
     if (isStreaming) return;
     const conversation = freshConversation();
-    setSession(current => ({ activeId: conversation.id, conversations: [conversation, ...current.conversations] }));
+    stickToBottomRef.current = true;
+    setSession(current => ({
+      activeId: conversation.id,
+      conversations: [conversation, ...current.conversations].slice(0, MAX_STORED_CONVERSATIONS),
+    }));
     setError("");
     setDraft("");
   };
+
+  const selectConversation = (conversationId: string) => {
+    if (isStreaming) return;
+    stickToBottomRef.current = true;
+    setShowJumpToLatest(false);
+    setSession(current => ({ ...current, activeId: conversationId }));
+  };
+
   const clearConversation = () => {
     if (isStreaming) return;
+    stickToBottomRef.current = true;
     updateActive(conversation => ({ ...conversation, title: "New chat", messages: [greeting()] }));
     setError("");
     setDraft("");
   };
+
   const handleLogin = (token: string) => {
     const value = token.trim();
     if (value.length < 32) {
@@ -231,7 +297,9 @@ export default function OwnerChat() {
     setOwnerToken(value);
     setError("");
   };
+
   const cancel = () => abortRef.current?.abort();
+
   const copyMessage = async (message: ChatEntry) => {
     try {
       await navigator.clipboard.writeText(message.content);
@@ -242,23 +310,50 @@ export default function OwnerChat() {
     }
   };
 
+  const onMessageScroll = (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const atBottom = distanceFromBottom < STICKY_SCROLL_THRESHOLD;
+    stickToBottomRef.current = atBottom;
+    setShowJumpToLatest(!atBottom && activeConversation.messages.length > 2);
+  };
+
+  const onDraftChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    setDraft(textarea.value);
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  };
+
   const send = async () => {
     const content = draft.trim();
     if (!content || isStreaming || !ownerToken) return;
+
     const userMessage: ChatEntry = { id: crypto.randomUUID(), role: "user", content };
     const assistantId = crypto.randomUUID();
     const assistantMessage: ChatEntry = { id: assistantId, role: "assistant", content: "", thinking: "", pending: true };
     const requestMessages = [...activeConversation.messages.slice(1), userMessage].map(({ role, content: messageContent }) => ({ role, content: messageContent }));
 
+    stickToBottomRef.current = true;
+    setShowJumpToLatest(false);
     setDraft("");
     setError("");
-    updateActive(conversation => ({ ...conversation, title: conversation.title === "New chat" ? titleFromPrompt(content) : conversation.title, messages: [...conversation.messages, userMessage, assistantMessage] }));
+    updateActive(conversation => ({
+      ...conversation,
+      title: conversation.title === "New chat" ? titleFromPrompt(content) : conversation.title,
+      messages: [...conversation.messages, userMessage, assistantMessage],
+    }));
     setIsStreaming(true);
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const response = await fetch("/chat/api/completions", { method: "POST", signal: controller.signal, headers: { "content-type": "application/json", "x-owner-chat-token": ownerToken }, body: JSON.stringify({ messages: requestMessages, max_tokens: 512 }) });
+      const response = await fetch("/chat/api/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "content-type": "application/json", "x-owner-chat-token": ownerToken },
+        body: JSON.stringify({ messages: requestMessages, max_tokens: 512 }),
+      });
       if (!response.ok) throw new Error(compactError(await response.text(), response.status));
       if (!response.body) throw new Error("The model returned no stream.");
 
@@ -267,10 +362,19 @@ export default function OwnerChat() {
       let buffer = "";
       let output = "";
       let nativeThinking = "";
+
       const updateStream = () => {
         const split = separateReasoning(output);
-        updateActive(conversation => ({ ...conversation, messages: conversation.messages.map(message => message.id === assistantId ? { ...message, content: split.answer, thinking: nativeThinking || split.thinking, pending: true } : message) }));
+        updateActive(conversation => ({
+          ...conversation,
+          messages: conversation.messages.map(message =>
+            message.id === assistantId
+              ? { ...message, content: split.answer, thinking: nativeThinking || split.thinking, pending: true }
+              : message
+          ),
+        }));
       };
+
       const applyLine = (line: string) => {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) return;
@@ -298,17 +402,40 @@ export default function OwnerChat() {
         lines.forEach(applyLine);
         if (done) break;
       }
+
       if (buffer) applyLine(buffer);
       const split = separateReasoning(output);
-      updateActive(conversation => ({ ...conversation, messages: conversation.messages.map(message => message.id === assistantId ? { ...message, content: split.answer || (nativeThinking ? "The model completed without a separate final answer." : output || "The model completed without an answer token."), thinking: nativeThinking || split.thinking, pending: false } : message) }));
+      updateActive(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(message =>
+          message.id === assistantId
+            ? {
+                ...message,
+                content: split.answer || (nativeThinking ? "The model completed without a separate final answer." : output || "The model completed without an answer token."),
+                thinking: nativeThinking || split.thinking,
+                pending: false,
+              }
+            : message
+        ),
+      }));
     } catch (reason) {
-      const message = controller.signal.aborted ? "Response stopped. This session remains available." : reason instanceof Error ? reason.message : "The local model connection failed.";
-      updateActive(conversation => ({ ...conversation, messages: conversation.messages.map(item => item.id === assistantId ? { ...item, content: message, pending: false, error: true } : item) }));
+      const message = controller.signal.aborted
+        ? "Response stopped. This session remains available."
+        : reason instanceof Error
+          ? reason.message
+          : "The local model connection failed.";
+      updateActive(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(item =>
+          item.id === assistantId ? { ...item, content: message, pending: false, error: true } : item
+        ),
+      }));
     } finally {
       abortRef.current = null;
       setIsStreaming(false);
     }
   };
+
   const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -319,19 +446,72 @@ export default function OwnerChat() {
   if (!ownerToken) return <LoginScreen error={error} onLogin={handleLogin} />;
 
   return (
-    <main className="reference-chat-shell min-h-screen bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
-      <div className="mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:min-h-[calc(100vh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
-        <aside className="hidden min-h-0 flex-col border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex">
-          <div className="flex items-center justify-between px-1"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div><button className="rounded-lg p-1.5 text-[#7a7d88] transition-colors hover:bg-white" aria-label="Collapse navigation"><Menu className="h-4 w-4" /></button></div>
-          <button onClick={createConversation} disabled={isStreaming} className="mt-7 flex items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] font-medium text-[#31343d] transition-colors hover:bg-white disabled:opacity-45"><MessageCirclePlus className="h-4 w-4" /> New chat</button>
-          <button className="mt-1 flex items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] text-[#686b75] transition-colors hover:bg-white"><Search className="h-4 w-4" /> Search</button>
-          <div className="mt-6 border-t border-[#e0e2e9] pt-5"><p className="px-2.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-[#9295a0]">This session</p><div className="mt-2 space-y-1">{session.conversations.map(conversation => <button key={conversation.id} onClick={() => !isStreaming && setSession(current => ({ ...current, activeId: conversation.id }))} className={`w-full truncate rounded-[10px] px-2.5 py-2.5 text-left text-[12px] transition-colors ${conversation.id === activeConversation.id ? "bg-[#e4e7fb] font-medium text-[#373d62]" : "text-[#666a75] hover:bg-white"}`}>{conversation.title}</button>)}</div></div>
-          <div className="mt-auto border-t border-[#e0e2e9] pt-4"><p className="px-2.5 text-[11px] leading-5 text-[#858894]">History remains in this browser session only.</p><div className="mt-4 flex items-center gap-2 px-2.5 text-[11px] text-[#747783]"><ShieldCheck className="h-3.5 w-3.5 text-[#6e7ec8]" /> Private owner access</div></div>
+    <main className="reference-chat-shell h-[100dvh] overflow-hidden bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
+      <div className="mx-auto grid h-full min-h-0 max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:h-[calc(100dvh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
+        <aside className="hidden min-h-0 flex-col overflow-hidden border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex">
+          <div className="flex shrink-0 items-center justify-between px-1">
+            <div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div>
+            <button className="rounded-lg p-1.5 text-[#7a7d88] transition-colors hover:bg-white active:scale-[0.97]" aria-label="Collapse navigation"><Menu className="h-4 w-4" /></button>
+          </div>
+
+          <button onClick={createConversation} disabled={isStreaming} className="mt-7 flex shrink-0 items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] font-medium text-[#31343d] transition-colors hover:bg-white disabled:opacity-45"><MessageCirclePlus className="h-4 w-4" /> New chat</button>
+          <button onClick={() => { setHistorySearchOpen(open => !open); setHistoryQuery(""); }} className="mt-1 flex shrink-0 items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] text-[#686b75] transition-colors hover:bg-white"><Search className="h-4 w-4" /> Search</button>
+
+          {historySearchOpen && (
+            <div className="mt-2 flex shrink-0 items-center gap-2 rounded-[11px] border border-[#dce0ec] bg-white px-2.5 py-2 shadow-[0_4px_12px_rgba(43,49,72,0.05)]">
+              <Search className="h-3.5 w-3.5 shrink-0 text-[#9095a3]" />
+              <input autoFocus value={historyQuery} onChange={event => setHistoryQuery(event.target.value)} placeholder="Find a chat" className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[#a2a6b2]" />
+              <button onClick={() => { setHistorySearchOpen(false); setHistoryQuery(""); }} className="rounded p-0.5 text-[#969aa5] hover:bg-[#f1f2f6]" aria-label="Close search"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          )}
+
+          <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-[#e0e2e9] pt-5">
+            <div className="flex items-center justify-between px-2.5"><p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-[#9295a0]">This session</p><span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-medium text-[#9ca0aa]">{session.conversations.length}</span></div>
+            <div className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+              {visibleConversations.map(conversation => (
+                <button key={conversation.id} onClick={() => selectConversation(conversation.id)} className={`w-full truncate rounded-[10px] px-2.5 py-2.5 text-left text-[12px] transition-colors ${conversation.id === activeConversation.id ? "bg-[#e4e7fb] font-medium text-[#373d62]" : "text-[#666a75] hover:bg-white"}`}>{conversation.title}</button>
+              ))}
+              {!visibleConversations.length && <p className="px-2.5 py-3 text-[11px] text-[#9a9ea9]">No matching chats.</p>}
+            </div>
+          </div>
+
+          <div className="mt-4 shrink-0 border-t border-[#e0e2e9] pt-4"><p className="px-2.5 text-[11px] leading-5 text-[#858894]">Recent chats stay in this browser session.</p><div className="mt-4 flex items-center gap-2 px-2.5 text-[11px] text-[#747783]"><ShieldCheck className="h-3.5 w-3.5 text-[#6e7ec8]" /> Private owner access</div></div>
         </aside>
-        <section className="flex min-h-0 flex-col bg-[#fbfcfd]">
-          <header className="flex h-[62px] items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7"><div className="flex items-center gap-2.5"><button className="rounded-lg p-1.5 text-[#747783] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><button className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943]"><span>Gemma E2B</span><ChevronDown className="h-3.5 w-3.5 text-[#7b7e88]" /></button></div><div className="flex items-center gap-1"><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button><button className="rounded-[8px] p-1.5 text-[#6f727c] transition-colors hover:bg-[#f1f2f5]" aria-label="More options"><Ellipsis className="h-4 w-4" /></button></div></header>
-          <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 md:px-14"><div className="mx-auto max-w-[680px] space-y-7 pb-8">{activeConversation.messages.map(message => <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}><ThinkingPanel message={message} /><div className={`reference-message ${message.role === "user" ? "rounded-[11px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[15px] leading-7 text-[#2f3138]"}`}>{message.role === "assistant" ? <p className="whitespace-pre-wrap break-words">{message.content || (message.pending ? "" : "No final answer was returned.")}</p> : <p className="whitespace-pre-wrap">{message.content}</p>}{message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}</div>{message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Helpful"><ThumbsUp className="h-3.5 w-3.5" /></button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Not helpful"><ThumbsDown className="h-3.5 w-3.5" /></button></div>}</article>)}<div ref={bottomRef} /></div></div>
-          <div className="border-t border-[#e6e8ee] bg-[#fbfcfd] px-4 pb-4 pt-3 sm:px-8 sm:pb-5"><div className="mx-auto max-w-[700px]"><div className="rounded-[18px] border border-[#dfe1e8] bg-white px-3 py-2 shadow-[0_7px_20px_rgba(39,43,57,0.08)] transition-shadow focus-within:border-[#aab5eb] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={2} disabled={isStreaming} className="min-h-[48px] max-h-40 w-full resize-none bg-transparent px-1 py-2 text-[15px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50" /><div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center gap-1"><button className="grid h-8 w-8 place-items-center rounded-[8px] text-[#747783] transition-colors hover:bg-[#f1f2f5]" aria-label="Add"><Plus className="h-4 w-4" /></button><button className="flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-medium text-[#50535d] transition-colors hover:bg-[#f1f2f5]"><SlidersHorizontal className="h-3.5 w-3.5" /> Tools</button><button className="hidden h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] text-[#676a74] sm:flex"><Paperclip className="h-3.5 w-3.5" /> Attach</button></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div></div>{error && <p className="mt-2 text-xs text-[#b23b35]">{error}</p>}<p className="mt-2 text-center text-[10px] text-[#9a9da6]">Local AI can make mistakes. Check important responses.</p></div></div>
+
+        <section className="relative flex min-h-0 flex-col overflow-hidden bg-[#fbfcfd]">
+          <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7">
+            <div className="flex items-center gap-2.5"><button className="rounded-lg p-1.5 text-[#747783] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><button className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943]"><span>Gemma E2B</span><ChevronDown className="h-3.5 w-3.5 text-[#7b7e88]" /></button></div>
+            <div className="flex items-center gap-1"><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button><button className="rounded-[8px] p-1.5 text-[#6f727c] transition-colors hover:bg-[#f1f2f5]" aria-label="More options"><Ellipsis className="h-4 w-4" /></button></div>
+          </header>
+
+          <div ref={messageScrollRef} onScroll={onMessageScroll} className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8 md:px-14">
+            <div className="mx-auto max-w-[700px] space-y-7 pb-8">
+              {activeConversation.messages.map(message => (
+                <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}>
+                  <ThinkingPanel message={message} />
+                  <div className={`reference-message ${message.role === "user" ? "rounded-[11px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[15px] leading-7 text-[#2f3138]"}`}>
+                    {message.role === "assistant" ? <p className="whitespace-pre-wrap break-words">{message.content || (message.pending ? "" : "No final answer was returned.")}</p> : <p className="whitespace-pre-wrap">{message.content}</p>}
+                    {message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}
+                  </div>
+                  {message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Helpful"><ThumbsUp className="h-3.5 w-3.5" /></button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Not helpful"><ThumbsDown className="h-3.5 w-3.5" /></button></div>}
+                </article>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+          </div>
+
+          {showJumpToLatest && <button onClick={() => scrollToLatest()} className="absolute bottom-[108px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#d9dde8] bg-white/95 px-3 py-2 text-[11px] font-medium text-[#596074] shadow-[0_8px_20px_rgba(37,43,64,0.12)] backdrop-blur transition-transform hover:-translate-y-0.5 active:scale-[0.97]"><ArrowDown className="h-3.5 w-3.5" /> Jump to latest</button>}
+
+          <div className="shrink-0 border-t border-[#e6e8ee] bg-[#fbfcfd] px-4 pb-4 pt-3 sm:px-8 sm:pb-5">
+            <div className="mx-auto max-w-[700px]">
+              <div className="rounded-[18px] border border-[#dfe1e8] bg-white px-3 py-2 shadow-[0_7px_20px_rgba(39,43,57,0.08)] transition-shadow focus-within:border-[#aab5eb] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10">
+                <textarea ref={composerRef} value={draft} onChange={onDraftChange} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={1} disabled={isStreaming} className="max-h-40 min-h-[48px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2 text-[15px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50" />
+                <div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center gap-1"><button className="grid h-8 w-8 place-items-center rounded-[8px] text-[#747783] transition-colors hover:bg-[#f1f2f5]" aria-label="Add"><Plus className="h-4 w-4" /></button><button className="flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-medium text-[#50535d] transition-colors hover:bg-[#f1f2f5]"><SlidersHorizontal className="h-3.5 w-3.5" /> Tools</button><button className="hidden h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] text-[#676a74] sm:flex"><Paperclip className="h-3.5 w-3.5" /> Attach</button></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div>
+              </div>
+              {error && <p className="mt-2 text-xs text-[#b23b35]">{error}</p>}
+              <p className="mt-2 text-center text-[10px] text-[#9a9da6]">Enter to send · Shift + Enter for a new line · Local AI can make mistakes.</p>
+            </div>
+          </div>
         </section>
       </div>
     </main>
