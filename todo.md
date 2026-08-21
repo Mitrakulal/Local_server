@@ -64,6 +64,7 @@
 - [x] Correct the chat router’s port-3001 listener in code to explicit `127.0.0.1` loopback binding and pass the same-host API/chat acceptance test.
 - [x] Reinstall the corrected chat-router release on the Mac mini and verify port 3001 shows `127.0.0.1` rather than `*` before any Cloudflare cutover.
 - [x] Replace the Orbit/Nocturne owner-chat styling with a calm Apple-inspired light interface and validate the redesign locally through the private port-3001 route.
+- [x] Rebuild the owner chat to match the supplied product-layout references: persistent history/navigation, a focused central conversation feed, compact contextual controls, and a large anchored composer rather than a landing-page layout.
 - [ ] Change the Cloudflare Tunnel target for `google.mattrlabs.online` from loopback port 8787 to the validated loopback port-3001 router, with the current port-8787 target retained as rollback.
 - [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
 - [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.

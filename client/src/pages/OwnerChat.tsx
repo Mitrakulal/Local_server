@@ -1,45 +1,53 @@
 /**
- * Luminous Utility style: an Apple-inspired, daylight conversation surface.
- * The browser keeps only session-scoped conversation text; it never receives
- * CHAT_GATEWAY_KEY or any gateway administrator secret.
+ * Reference-grounded chat workspace: persistent browser-session history rail,
+ * focused reading column, and anchored composer. CHAT_GATEWAY_KEY remains server-side.
  */
 import { Streamdown } from "streamdown";
 import {
-  ArrowUp,
-  CircleStop,
-  KeyRound,
+  Check,
+  ChevronDown,
+  Copy,
+  Ellipsis,
+  Menu,
+  MessageCirclePlus,
+  Paperclip,
   Plus,
-  RotateCcw,
+  Search,
+  Send,
   ShieldCheck,
-  Sparkles,
+  SlidersHorizontal,
+  ThumbsDown,
+  ThumbsUp,
 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Role = "user" | "assistant";
-type ChatEntry = {
-  id: string;
-  role: Role;
-  content: string;
-  pending?: boolean;
-  error?: boolean;
-};
+type ChatEntry = { id: string; role: Role; content: string; pending?: boolean; error?: boolean };
+type Conversation = { id: string; title: string; messages: ChatEntry[] };
+type SessionState = { activeId: string; conversations: Conversation[] };
 
-const SESSION_KEY = "luminous-utility-owner-chat-v1";
-const greeting: ChatEntry = {
-  id: "greeting",
+const SESSION_KEY = "mattr-chat-workspace-v2";
+const greeting = (): ChatEntry => ({
+  id: crypto.randomUUID(),
   role: "assistant",
-  content:
-    "I’m ready when you are. This conversation stays in the current browser session and runs through your bounded local gateway.",
-};
+  content: "I’m here. What would you like to think through?",
+});
+const freshConversation = (): Conversation => ({
+  id: crypto.randomUUID(),
+  title: "New chat",
+  messages: [greeting()],
+});
 
-function loadSession() {
+function loadSession(): SessionState {
   try {
-    const value = window.sessionStorage.getItem(SESSION_KEY);
-    const parsed = value ? (JSON.parse(value) as ChatEntry[]) : undefined;
-    return Array.isArray(parsed) && parsed.length ? parsed : [greeting];
+    const raw = window.sessionStorage.getItem(SESSION_KEY);
+    const parsed = raw ? (JSON.parse(raw) as SessionState) : undefined;
+    if (parsed?.activeId && Array.isArray(parsed.conversations) && parsed.conversations.length) return parsed;
   } catch {
-    return [greeting];
+    // A malformed local session is safely replaced with one empty chat.
   }
+  const conversation = freshConversation();
+  return { activeId: conversation.id, conversations: [conversation] };
 }
 
 function compactError(raw: string, status: number) {
@@ -51,42 +59,59 @@ function compactError(raw: string, status: number) {
   }
 }
 
-function PrismMark({ className = "" }: { className?: string }) {
-  return (
-    <span
-      className={`grid h-10 w-10 place-items-center rounded-[14px] bg-gradient-to-br from-[#3558e8] via-[#6985ff] to-[#dfe6ff] shadow-[0_10px_24px_rgba(74,103,234,0.28)] ${className}`}
-      aria-hidden="true"
-    >
-      <span className="h-3.5 w-3.5 rounded-full border border-white/80 bg-white/70 shadow-[0_1px_5px_rgba(29,29,31,0.18)]" />
-    </span>
-  );
+function titleFromPrompt(content: string) {
+  const clean = content.replace(/\s+/g, " ").trim();
+  return clean.length > 34 ? `${clean.slice(0, 34).trimEnd()}…` : clean || "New chat";
+}
+
+function BrandMark() {
+  return <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-[#1f2228] text-[11px] font-semibold text-white">M</span>;
 }
 
 export default function OwnerChat() {
   const [ownerToken, setOwnerToken] = useState("");
   const [draftToken, setDraftToken] = useState("");
-  const [messages, setMessages] = useState<ChatEntry[]>(() => loadSession());
+  const [session, setSession] = useState<SessionState>(() => loadSession());
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(messages));
-  }, [messages]);
+  const activeConversation = useMemo(
+    () => session.conversations.find(conversation => conversation.id === session.activeId) || session.conversations[0]!,
+    [session]
+  );
 
+  useEffect(() => {
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }, [session]);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isStreaming]);
+  }, [activeConversation.messages, isStreaming]);
 
+  const updateActive = (apply: (conversation: Conversation) => Conversation) => {
+    setSession(current => ({
+      ...current,
+      conversations: current.conversations.map(conversation =>
+        conversation.id === current.activeId ? apply(conversation) : conversation
+      ),
+    }));
+  };
+  const createConversation = () => {
+    if (isStreaming) return;
+    const conversation = freshConversation();
+    setSession(current => ({ activeId: conversation.id, conversations: [conversation, ...current.conversations] }));
+    setError("");
+    setDraft("");
+  };
   const clearConversation = () => {
     if (isStreaming) return;
+    updateActive(conversation => ({ ...conversation, title: "New chat", messages: [greeting()] }));
     setError("");
-    setMessages([greeting]);
-    window.sessionStorage.removeItem(SESSION_KEY);
+    setDraft("");
   };
-
   const submitToken = (event: FormEvent) => {
     event.preventDefault();
     const value = draftToken.trim();
@@ -98,32 +123,32 @@ export default function OwnerChat() {
     setDraftToken("");
     setError("");
   };
-
   const cancel = () => abortRef.current?.abort();
+  const copyMessage = async (message: ChatEntry) => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopiedId(message.id);
+      window.setTimeout(() => setCopiedId(null), 1200);
+    } catch {
+      setError("Copy was unavailable in this browser.");
+    }
+  };
 
   const send = async () => {
     const content = draft.trim();
-    if (!content || isStreaming) return;
-    if (!ownerToken) {
-      setError("Owner chat access is required before sending a message.");
-      return;
-    }
-
+    if (!content || isStreaming || !ownerToken) return;
     const userMessage: ChatEntry = { id: crypto.randomUUID(), role: "user", content };
     const assistantId = crypto.randomUUID();
-    const assistantMessage: ChatEntry = {
-      id: assistantId,
-      role: "assistant",
-      content: "",
-      pending: true,
-    };
-    const conversation = [...messages, userMessage]
-      .filter(message => message.id !== "greeting")
-      .map(({ role, content: messageContent }) => ({ role, content: messageContent }));
+    const assistantMessage: ChatEntry = { id: assistantId, role: "assistant", content: "", pending: true };
+    const requestMessages = [...activeConversation.messages.slice(1), userMessage].map(({ role, content: messageContent }) => ({ role, content: messageContent }));
 
     setDraft("");
     setError("");
-    setMessages(current => [...current, userMessage, assistantMessage]);
+    updateActive(conversation => ({
+      ...conversation,
+      title: conversation.title === "New chat" ? titleFromPrompt(content) : conversation.title,
+      messages: [...conversation.messages, userMessage, assistantMessage],
+    }));
     setIsStreaming(true);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -132,11 +157,8 @@ export default function OwnerChat() {
       const response = await fetch("/chat/api/completions", {
         method: "POST",
         signal: controller.signal,
-        headers: {
-          "content-type": "application/json",
-          "x-owner-chat-token": ownerToken,
-        },
-        body: JSON.stringify({ messages: conversation, max_tokens: 512 }),
+        headers: { "content-type": "application/json", "x-owner-chat-token": ownerToken },
+        body: JSON.stringify({ messages: requestMessages, max_tokens: 512 }),
       });
       if (!response.ok) throw new Error(compactError(await response.text(), response.status));
       if (!response.body) throw new Error("The model returned no stream.");
@@ -151,25 +173,17 @@ export default function OwnerChat() {
         const payload = trimmed.slice(5).trim();
         if (!payload || payload === "[DONE]") return;
         try {
-          const chunk = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string | null } }>;
-          };
+          const chunk = JSON.parse(payload) as { choices?: Array<{ delta?: { content?: string | null; reasoning_content?: string | null } }> };
           const delta = chunk.choices?.[0]?.delta;
-          const token =
-            typeof delta?.content === "string"
-              ? delta.content
-              : typeof delta?.reasoning_content === "string"
-                ? delta.reasoning_content
-                : "";
+          const token = typeof delta?.content === "string" ? delta.content : typeof delta?.reasoning_content === "string" ? delta.reasoning_content : "";
           if (!token) return;
           output += token;
-          setMessages(current =>
-            current.map(message =>
-              message.id === assistantId ? { ...message, content: output, pending: true } : message
-            )
-          );
+          updateActive(conversation => ({
+            ...conversation,
+            messages: conversation.messages.map(message => message.id === assistantId ? { ...message, content: output, pending: true } : message),
+          }));
         } catch {
-          // One malformed upstream event must not discard a valid stream.
+          // Preserve a valid stream if one upstream SSE event is malformed.
         }
       };
 
@@ -182,31 +196,21 @@ export default function OwnerChat() {
         if (done) break;
       }
       if (buffer) applyLine(buffer);
-      setMessages(current =>
-        current.map(message =>
-          message.id === assistantId
-            ? { ...message, content: output || "The model completed without an answer token.", pending: false }
-            : message
-        )
-      );
+      updateActive(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(message => message.id === assistantId ? { ...message, content: output || "The model completed without an answer token.", pending: false } : message),
+      }));
     } catch (reason) {
-      const message =
-        controller.signal.aborted
-          ? "Response stopped. Your previous messages remain in this session."
-          : reason instanceof Error
-            ? reason.message
-            : "The local model connection failed.";
-      setMessages(current =>
-        current.map(item =>
-          item.id === assistantId ? { ...item, content: message, pending: false, error: true } : item
-        )
-      );
+      const message = controller.signal.aborted ? "Response stopped. This session remains available." : reason instanceof Error ? reason.message : "The local model connection failed.";
+      updateActive(conversation => ({
+        ...conversation,
+        messages: conversation.messages.map(item => item.id === assistantId ? { ...item, content: message, pending: false, error: true } : item),
+      }));
     } finally {
       abortRef.current = null;
       setIsStreaming(false);
     }
   };
-
   const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -215,83 +219,8 @@ export default function OwnerChat() {
   };
 
   if (!ownerToken) {
-    return (
-      <main className="luminous-shell min-h-screen overflow-hidden bg-[#f5f5f7] px-4 py-4 text-[#1d1d1f] sm:px-7 sm:py-7">
-        <div className="luminous-atmosphere pointer-events-none fixed inset-0" />
-        <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] max-w-6xl flex-col justify-between overflow-hidden rounded-[32px] border border-white/80 bg-white/65 p-5 shadow-[0_24px_80px_rgba(30,44,84,0.11)] backdrop-blur-2xl sm:min-h-[calc(100vh-3.5rem)] sm:p-8">
-          <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <PrismMark />
-              <div>
-                <p className="text-[15px] font-semibold tracking-[-0.025em] text-[#1d1d1f]">Mattr Chat</p>
-                <p className="mt-0.5 text-[11px] font-medium text-[#6e6e73]">Private local conversation</p>
-              </div>
-            </div>
-            <span className="hidden rounded-full border border-[#d2d8ef] bg-white/70 px-3 py-1.5 text-[11px] font-medium text-[#5363a9] sm:block">Owner access</span>
-          </header>
-
-          <section className="mx-auto w-full max-w-xl py-14 sm:py-24">
-            <div className="mb-7 flex items-center gap-2 text-[12px] font-medium text-[#5267b8]">
-              <span className="h-2 w-2 rounded-full bg-[#67b691] shadow-[0_0_0_4px_rgba(103,182,145,0.12)]" />
-              Local model available
-            </div>
-            <h1 className="luminous-display max-w-lg text-[46px] leading-[0.96] tracking-[-0.058em] text-[#1d1d1f] sm:text-[68px]">
-              A private space to think.
-            </h1>
-            <p className="mt-7 max-w-md text-[16px] leading-7 text-[#6e6e73]">
-              A calm conversation surface for your local model. The session stays in this browser, while the model key stays on your server.
-            </p>
-            <form className="mt-9" onSubmit={submitToken}>
-              <label className="block">
-                <span className="text-[12px] font-semibold text-[#515154]">Owner chat token</span>
-                <div className="mt-2 flex items-center rounded-[18px] border border-[#d9d9dc] bg-white p-1.5 shadow-[0_8px_26px_rgba(29,29,31,0.06)] transition-shadow focus-within:border-[#8ca0ff] focus-within:shadow-[0_0_0_4px_rgba(91,124,250,0.12)]">
-                  <KeyRound className="ml-3 h-4 w-4 text-[#7a7a80]" />
-                  <input
-                    value={draftToken}
-                    onChange={event => setDraftToken(event.target.value)}
-                    type="password"
-                    autoComplete="off"
-                    placeholder="Paste private owner-chat token"
-                    className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-[#1d1d1f] outline-none placeholder:text-[#9b9ba1]"
-                  />
-                  <button type="submit" className="rounded-[14px] bg-[#1d1d1f] px-4 py-3 text-xs font-semibold text-white transition-all duration-150 hover:bg-[#323235] active:scale-[0.97]">Continue</button>
-                </div>
-              </label>
-            </form>
-            {error && <p className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-[#b42318]">{error}</p>}
-          </section>
-
-          <footer className="flex items-center gap-2 text-[11px] font-medium text-[#86868b]"><ShieldCheck className="h-4 w-4 text-[#6377d3]" /> Session-only history · key remains server-side</footer>
-        </div>
-      </main>
-    );
+    return <main className="reference-chat-shell min-h-screen bg-[#e9ebf1] p-3 text-[#202124] sm:p-7"><div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1280px] overflow-hidden rounded-[25px] border border-white/80 bg-[#f8f9fb] shadow-[0_22px_65px_rgba(49,54,72,0.16)] sm:min-h-[calc(100vh-3.5rem)]"><aside className="hidden w-[236px] flex-col border-r border-[#e2e4eb] bg-[#f3f4f9] p-5 md:flex"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div><div className="mt-9 rounded-[14px] bg-white/70 px-3 py-3 text-xs text-[#686b75]">Private local workspace</div><div className="mt-auto flex items-center gap-2 text-[11px] text-[#747783]"><ShieldCheck className="h-3.5 w-3.5 text-[#6979c4]" /> Owner access only</div></aside><section className="flex flex-1 flex-col p-5 sm:p-9 md:pl-14"><header className="flex items-center justify-between"><div className="flex items-center gap-2 md:hidden"><BrandMark /><span className="text-sm font-semibold">Mattr Chat</span></div><span className="ml-auto rounded-full border border-[#dde0eb] bg-white px-3 py-1.5 text-[11px] font-medium text-[#666b7b]">Private session</span></header><form onSubmit={submitToken} className="mx-auto flex w-full max-w-[580px] flex-1 flex-col justify-center py-12"><p className="text-[12px] font-semibold text-[#7786cb]">OWNER CHAT</p><h1 className="mt-3 text-[34px] font-semibold tracking-[-0.045em] text-[#22242a] sm:text-[42px]">Continue your conversation.</h1><p className="mt-4 max-w-md text-[15px] leading-6 text-[#737681]">This lightweight workspace keeps your conversation in this browser session. The model key stays on the Mac mini.</p><label className="mt-9 block"><span className="text-[12px] font-medium text-[#565964]">Owner chat token</span><div className="mt-2 flex items-center rounded-[16px] border border-[#dadde8] bg-white p-1.5 shadow-[0_5px_16px_rgba(37,41,56,0.06)] focus-within:border-[#92a0e7] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10"><input value={draftToken} onChange={event => setDraftToken(event.target.value)} type="password" autoComplete="off" placeholder="Paste private token" className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-[#a4a7b0]" /><button type="submit" className="rounded-[12px] bg-[#252831] px-4 py-3 text-xs font-semibold text-white transition-transform active:scale-[0.97]">Continue</button></div></label>{error && <p className="mt-3 rounded-[12px] border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-[#ae3029]">{error}</p>}</form></section></div></main>;
   }
 
-  return (
-    <main className="luminous-shell min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
-      <div className="luminous-atmosphere pointer-events-none fixed inset-0" />
-      <div className="relative mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)_230px]">
-        <aside className="border-b border-[#e6e6e9] bg-white/70 p-4 backdrop-blur-xl lg:border-b-0 lg:border-r lg:p-5">
-          <div className="flex items-center justify-between lg:block">
-            <div className="flex items-center gap-3"><PrismMark /><div><p className="text-[15px] font-semibold tracking-[-0.025em]">Mattr Chat</p><p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#86868b]">Owner session</p></div></div>
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#2d8b5e]"><span className="h-2 w-2 rounded-full bg-[#56b27d]" /> Available</span>
-          </div>
-          <div className="mt-7 hidden lg:block"><p className="text-[11px] font-semibold text-[#86868b]">Current conversation</p><div className="mt-3 rounded-[18px] border border-[#e6e6e9] bg-white p-3.5 shadow-[0_6px_18px_rgba(29,29,31,0.035)]"><p className="text-sm font-medium">Untitled conversation</p><p className="mt-1 text-[11px] leading-4 text-[#86868b]">Session only · {messages.filter(message => message.id !== "greeting").length} messages</p></div></div>
-          <button onClick={clearConversation} disabled={isStreaming} className="mt-4 flex w-full items-center justify-center gap-2 rounded-[15px] border border-[#dedee2] bg-white px-3 py-3 text-xs font-semibold text-[#3a3a3c] transition-all hover:border-[#b9c4ff] hover:bg-[#f7f8ff] disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4 text-[#566dd0]" /> New conversation</button>
-          <p className="mt-4 hidden rounded-[15px] bg-[#f0f2fa] p-3 text-[11px] leading-5 text-[#69708e] lg:block">Conversation history stays in this browser session. Clear removes it here.</p>
-        </aside>
-
-        <section className="flex min-h-0 flex-col">
-          <header className="flex items-center justify-between border-b border-[#e6e6e9] bg-white/45 px-4 py-4 backdrop-blur-xl sm:px-8"><div><p className="text-[11px] font-semibold text-[#86868b]">Conversation</p><h1 className="mt-0.5 text-[15px] font-semibold tracking-[-0.015em]">Gemma E2B</h1></div><button onClick={clearConversation} disabled={isStreaming} className="flex items-center gap-2 rounded-[11px] px-2.5 py-2 text-[11px] font-semibold text-[#6e6e73] transition-colors hover:bg-white hover:text-[#1d1d1f] disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" /> Clear</button></header>
-          <div className="flex-1 overflow-y-auto px-4 py-9 sm:px-9 lg:px-14"><div className="mx-auto max-w-3xl space-y-8">
-            {messages.map(message => <article key={message.id} className={`luminous-chat-entry ${message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}`}><div className={`flex items-center gap-2 text-[11px] font-semibold ${message.role === "user" ? "justify-end text-[#6e6e73]" : "text-[#5369c5]"}`}>{message.role === "assistant" ? <><Sparkles className="h-3.5 w-3.5" /> Mattr</> : "You"}</div><div className={`mt-2 rounded-[20px] px-4 py-3.5 text-[15px] leading-7 ${message.role === "user" ? "bg-[#1d1d1f] text-white shadow-[0_10px_24px_rgba(29,29,31,0.12)]" : message.error ? "border border-red-200 bg-red-50 text-[#b42318]" : "border border-[#e6e6e9] bg-white/82 text-[#2e2e31] shadow-[0_8px_24px_rgba(29,29,31,0.035)]"}`}>{message.role === "assistant" ? <Streamdown>{message.content || ""}</Streamdown> : <p className="whitespace-pre-wrap">{message.content}</p>}{message.pending && <span className="luminous-cursor ml-1 inline-block h-4 w-[2px] bg-[#5b7cfa] align-[-2px]" />}</div></article>)}
-            <div ref={bottomRef} />
-          </div></div>
-          <div className="border-t border-[#e6e6e9] bg-white/70 px-4 py-4 backdrop-blur-xl sm:px-8"><div className="mx-auto max-w-3xl"><div className="rounded-[22px] border border-[#dcdce1] bg-white p-2 shadow-[0_12px_36px_rgba(29,29,31,0.08)] transition-shadow focus-within:border-[#a8b6ff] focus-within:shadow-[0_0_0_4px_rgba(91,124,250,0.12)]"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={onComposerKeyDown} placeholder="Ask anything…" rows={2} disabled={isStreaming} className="max-h-40 min-h-[54px] w-full resize-none bg-transparent px-3 py-2 text-[15px] leading-6 text-[#1d1d1f] outline-none placeholder:text-[#9b9ba1] disabled:opacity-50" /><div className="flex items-center justify-between px-2 pb-1"><span className="text-[10px] font-medium text-[#86868b]">Enter to send · Shift + Enter for a new line</span>{isStreaming ? <button onClick={cancel} className="flex h-9 items-center gap-2 rounded-[12px] bg-[#fff1f0] px-3 text-xs font-semibold text-[#c0392b] transition-colors hover:bg-[#ffe4e1]"><CircleStop className="h-4 w-4" /> Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-9 w-9 place-items-center rounded-[12px] bg-[#5b7cfa] text-white shadow-[0_7px_16px_rgba(91,124,250,0.3)] transition-all duration-150 hover:bg-[#4b6bea] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><ArrowUp className="h-4 w-4" /></button>}</div></div>{error && <p className="mt-2 text-xs text-[#c0392b]">{error}</p>}</div></div>
-        </section>
-
-        <aside className="hidden border-l border-[#e6e6e9] bg-white/55 p-5 backdrop-blur-xl lg:block"><p className="text-[11px] font-semibold text-[#86868b]">About this session</p><div className="mt-5 space-y-6"><div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9aa0]">Model</p><p className="mt-1 text-sm font-medium">gemma-e2b</p></div><div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9aa0]">Shared capacity</p><p className="mt-1 text-sm font-medium">4 active responses</p><p className="mt-1 text-[11px] leading-4 text-[#86868b]">This private chat uses one bounded gateway identity.</p></div><div className="border-t border-[#e7e7ea] pt-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9a9aa0]">Privacy</p><p className="mt-1 text-[12px] leading-5 text-[#6e6e73]">Conversation text stays in this browser session. It is not stored as a server transcript.</p></div></div></aside>
-      </div>
-    </main>
-  );
+  return <main className="reference-chat-shell min-h-screen bg-[#e9ebf1] p-0 text-[#202124] sm:p-5"><div className="mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:min-h-[calc(100vh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]"><aside className="hidden min-h-0 flex-col border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex"><div className="flex items-center justify-between px-1"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div><button className="rounded-lg p-1.5 text-[#7a7d88] transition-colors hover:bg-white" aria-label="Collapse navigation"><Menu className="h-4 w-4" /></button></div><button onClick={createConversation} disabled={isStreaming} className="mt-7 flex items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] font-medium text-[#31343d] transition-colors hover:bg-white disabled:opacity-45"><MessageCirclePlus className="h-4 w-4" /> New chat</button><button className="mt-1 flex items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] text-[#686b75] transition-colors hover:bg-white"><Search className="h-4 w-4" /> Search</button><div className="mt-6 border-t border-[#e0e2e9] pt-5"><p className="px-2.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-[#9295a0]">This session</p><div className="mt-2 space-y-1">{session.conversations.map(conversation => <button key={conversation.id} onClick={() => !isStreaming && setSession(current => ({ ...current, activeId: conversation.id }))} className={`w-full truncate rounded-[10px] px-2.5 py-2.5 text-left text-[12px] transition-colors ${conversation.id === activeConversation.id ? "bg-[#e4e7fb] font-medium text-[#373d62]" : "text-[#666a75] hover:bg-white"}`}>{conversation.title}</button>)}</div></div><div className="mt-auto border-t border-[#e0e2e9] pt-4"><p className="px-2.5 text-[11px] leading-5 text-[#858894]">History remains in this browser session only.</p><div className="mt-4 flex items-center gap-2 px-2.5 text-[11px] text-[#747783]"><ShieldCheck className="h-3.5 w-3.5 text-[#6e7ec8]" /> Private owner access</div></div></aside><section className="flex min-h-0 flex-col bg-[#fbfcfd]"><header className="flex h-[62px] items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7"><div className="flex items-center gap-2.5"><button className="rounded-lg p-1.5 text-[#747783] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><button className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943]"><span>Gemma E2B</span><ChevronDown className="h-3.5 w-3.5 text-[#7b7e88]" /></button></div><div className="flex items-center gap-1"><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button><button className="rounded-[8px] p-1.5 text-[#6f727c] transition-colors hover:bg-[#f1f2f5]" aria-label="More options"><Ellipsis className="h-4 w-4" /></button></div></header><div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 md:px-14"><div className="mx-auto max-w-[680px] space-y-7 pb-8">{activeConversation.messages.map(message => <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}><div className={`reference-message ${message.role === "user" ? "rounded-[11px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[15px] leading-7 text-[#2f3138]"}`}>{message.role === "assistant" ? <Streamdown>{message.content || ""}</Streamdown> : <p className="whitespace-pre-wrap">{message.content}</p>}{message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}</div>{message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Helpful"><ThumbsUp className="h-3.5 w-3.5" /></button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Not helpful"><ThumbsDown className="h-3.5 w-3.5" /></button></div>}</article>)}<div ref={bottomRef} /></div></div><div className="border-t border-[#e6e8ee] bg-[#fbfcfd] px-4 pb-4 pt-3 sm:px-8 sm:pb-5"><div className="mx-auto max-w-[700px]"><div className="rounded-[18px] border border-[#dfe1e8] bg-white px-3 py-2 shadow-[0_7px_20px_rgba(39,43,57,0.08)] transition-shadow focus-within:border-[#aab5eb] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={2} disabled={isStreaming} className="min-h-[48px] max-h-40 w-full resize-none bg-transparent px-1 py-2 text-[15px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50" /><div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center gap-1"><button className="grid h-8 w-8 place-items-center rounded-[8px] text-[#747783] transition-colors hover:bg-[#f1f2f5]" aria-label="Add"><Plus className="h-4 w-4" /></button><button className="flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] font-medium text-[#50535d] transition-colors hover:bg-[#f1f2f5]"><SlidersHorizontal className="h-3.5 w-3.5" /> Tools</button><button className="hidden h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] text-[#676a74] sm:flex"><Paperclip className="h-3.5 w-3.5" /> Attach</button></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div></div>{error && <p className="mt-2 text-xs text-[#b23b35]">{error}</p>}<p className="mt-2 text-center text-[10px] text-[#9a9da6]">Local AI can make mistakes. Check important responses.</p></div></div></section></div></main>;
 }

@@ -73,64 +73,49 @@ The mark is a bold orange calibration ring interrupted by three offset tick mark
 - The right-hand run tape maintains technical density in idle state through timestamped slots, channel markers, and compact event counters.
 - The wordmark uses a visible Calibration Orange baseline beneath `LOAD`, reinforcing that the calibration-ring icon and name form one proprietary unit.
 
-## Same-host owner chat — Design Directions
+## Same-host owner chat — Reference-grounded specification
 
-### 1. Nocturne Ledger
-**Very Brief Intro:** A calm midnight writing room where the conversation feels like a living record rather than a generic chatbot. Warm brass, ink-black surfaces, and restrained motion give responses a considered, human pace.
-
-**Probability:** 0.071
-
-### 2. Cloud Atlas
-**Very Brief Intro:** A bright, airy conversational workspace with soft paper fields, blurred sky gradients, and generous editorial rhythm. It feels approachable and reflective rather than technical.
-
-**Probability:** 0.046
-
-### 3. Field Signal
-**Very Brief Intro:** A compact expedition console with low-light topography, signal marks, and an asymmetric navigation edge. It feels energetic and exploratory while remaining disciplined enough for long text sessions.
-
-**Probability:** 0.089
-
-## Revised chosen chat approach: Luminous Utility
+The supplied chat-interface references are the ground truth for this interface. The owner chat must be a **focused product workspace**, not a landing page, operations dashboard, or a generic centered card. The current chat shell is rebuilt around a persistent history/navigation rail, a tall centered conversation feed, minimal header controls, and a large composer anchored at the bottom of the active reading column.
 
 ### Design Movement
-Apple-inspired product minimalism interpreted as a calm local-AI utility. It is intentionally separate from the operational Instrument Panel used by the private Load Lab: the chat is light, quiet, tactile, and focused on thought rather than system machinery.
+Calm AI workspace design: a quiet, softly tinted application canvas with disciplined panel boundaries, compact controls, and a reading-first conversation rhythm. The composition follows the references’ product shell—light sidebar, central document-like chat field, short message blocks, and one highly legible bottom input.
 
 ### Core Principles
-1. Conversation is the primary artifact: generous reading width and near-invisible chrome keep focus on the exchange.
-2. Surfaces are pale, soft, and layered with subtle borders and restrained shadows rather than dark panels or decorative texture.
-3. Technical status is available but secondary, represented by a single quiet availability dot and plain language instead of dashboard metrics.
-4. Motion is physically quiet: short opacity and transform transitions support a feeling of polish without becoming theatrical.
+1. The conversation feed dominates the screen; all navigation and metadata remain peripheral.
+2. A persistent left rail supports real browser-session history and a clear New chat action, not decorative dashboard panels.
+3. The composer is a deliberate, wide, bottom-anchored command surface with integrated secondary controls and a single high-contrast send action.
+4. Assistant messages read as clean document fragments; user prompts are compact, right-aligned pale-accent bubbles.
 
 ### Color Philosophy
-Warm white and soft pearl-gray create a daylight workspace with a cool blue-violet accent reserved for intentional actions. Graphite typography maintains contrast and a subtle mint status signal communicates availability. The interface should feel spacious and considered, never clinical or generic.
+Use a mist-gray outer canvas, a white central workspace, low-contrast lavender/blue selection tints, graphite text, and one controlled periwinkle send accent. Color must create hierarchy quietly: no large gradients, no dark hero panels, and no decorative status chrome.
 
 ### Layout Paradigm
-The desktop view uses an airy three-zone frame: a narrow, pale navigation column; a generous central conversation field; and a thin contextual margin that disappears below desktop width. On mobile, navigation becomes a compact top bar while the conversation keeps the full visual field.
+On desktop, use a fixed 236px history rail, a thin divider, and a generous central conversation field with a maximum reading width. The composer remains anchored below the feed. On mobile, collapse the history rail into a compact overlay trigger while preserving the feed and composer hierarchy.
 
 ### Signature Elements
-1. A small translucent prism mark that refracts the accent color without using a wordmark as the logo.
-2. Layered frosted-white surfaces with hairline borders and low-elevation shadows.
-3. A precise live cursor that resolves into a cool accent rule when streaming finishes.
+1. A compact selected-history row with muted lavender fill and fine border.
+2. Small monochrome action controls that appear only beside completed assistant messages.
+3. A softly raised composer with a quiet tool row and a round periwinkle send control.
 
 ### Interaction Philosophy
-The composer remains the primary tactile object: Enter sends, Shift+Enter adds a line, and New conversation explicitly resets browser-session history. Controls use instant but tactile press feedback. No fake saved history, ratings, testimonials, or activity counters are shown.
+New chat clears the browser-session conversation explicitly. Enter sends and Shift+Enter adds a line. The history rail shows only conversations genuinely held in browser session; it must not fabricate prior user activity. Chat streaming stays immediate and unobtrusive.
 
 ### Animation
-Use transform/opacity transitions between 140–240ms with a crisp custom ease. New messages rise by 4px while fading in; the streaming cursor uses a quiet opacity pulse. Respect reduced-motion preferences and avoid animated gradients.
+Use 140–200ms opacity and transform transitions. A newly added message rises by 3–4px, selected history rows fade their tint, and button presses scale to 0.97. Avoid splashy page entrances, animated gradients, and prolonged typing effects. Respect reduced-motion preferences.
 
 ### Typography System
-Use the system UI stack for controls and conversation body for native-platform clarity. Use a lightly weighted serif only for the welcome statement, and IBM Plex Mono for compact technical context. Keep hierarchy spacious: a large welcoming headline, comfortable 16px conversation text, and small but high-contrast metadata.
+Use the system UI stack throughout. Conversation body uses 15–16px with relaxed 1.65 line height. Navigation and metadata use 11–13px. The interface avoids promotional display typography: clear reading, not a marketing page, is the hierarchy.
 
 ### Brand Essence
-**A refined private conversation surface for a carefully bounded local model.**
+**A quiet, private workspace for thinking with a bounded local model.**
 
-**Personality:** calm, exact, approachable.
+**Personality:** composed, clear, deliberate.
 
 ### Brand Voice
-Headlines are direct and quiet; system copy names real limits in plain language. Example lines: “A private space to think.” and “This conversation stays in this browser session.”
+Headlines and microcopy are concise and utility-led. Examples: “New chat” and “Ask anything.”
 
 ### Wordmark & Logo
-The mark is a translucent rounded prism containing a small cool-blue refracted dot. It is symbol-first, used beside a simple product name in the system UI rather than a stylized default wordmark.
+Use a simple small mark beside “Mattr Chat”; no oversized logo, hero identity, or decorative brand panel inside the chat canvas.
 
 ### Signature Brand Color
-**Prism Blue — `#5B7CFA`**
+**Signal Periwinkle — `#7C8EE6`**
