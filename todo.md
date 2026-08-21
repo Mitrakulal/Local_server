@@ -51,7 +51,11 @@
 - [x] Re-run the authenticated public stream using PowerShell-native JSON serialization after curl.exe repeatedly submitted malformed JSON arguments; confirm SSE ended with `data: [DONE]` under the intentional 128-token test cap.
 - [ ] Design and implement a private owner-only port-3000 administration interface for customer-key usage, limits, server health, gateway metrics, and controlled testing; keep it unavailable through the public Cloudflare API hostname.
 - [ ] Add server-side owner authentication and gateway-admin proxying so browser code never receives `GATEWAY_ADMIN_TOKEN` or raw API keys.
-- [ ] Add real per-key usage, event, health, and safe key-operation views to the private owner console while retaining the existing load-testing lab.
+- [x] Create and store a separate `OWNER_CONSOLE_TOKEN` in the Mac mini `gateway/.env` file with owner-only permissions.
+- [x] Synchronize the owner-console release commit on the Mac mini, keep one valid `OWNER_CONSOLE_TOKEN`, restart the updated gateway, and open `/admin` privately through the SSH tunnel.
+- [x] Restart the port-3000 owner console after confirming the current `OWNER_CONSOLE_TOKEN`, then verify authenticated telemetry loads without an owner-console authentication error.
+- [x] Add real per-key usage, event, health, and safe key-operation views to the private owner console while retaining the existing load-testing lab.
+- [x] Research recent public requests for affordable, privacy-conscious, small-scale LLM API access that fit the verified four-active-request Gemma gateway, then prepare an ethical outreach shortlist using original public post links only.
 - [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
 - [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.
 - [x] Select `google.mattrlabs.online` as the intentional Phase 2 public API hostname.
