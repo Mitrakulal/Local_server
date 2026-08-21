@@ -36,10 +36,25 @@ async function startServer() {
       res.status(404).set("cache-control", "no-store").json({ error: "not_found" })
     );
   }
-  app.use(express.static(staticPath));
+  app.use(
+    express.static(staticPath, {
+      etag: true,
+      lastModified: true,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".html")) {
+          // The document owns the asset manifest and must never point at stale chunks.
+          res.setHeader("cache-control", "no-store");
+          return;
+        }
+        // Vite asset names include a content hash, so immutable caching is safe.
+        res.setHeader("cache-control", "public, max-age=31536000, immutable");
+      },
+    })
+  );
 
   // Handle client-side routing - serve index.html for all routes
   app.get("*", (_req, res) => {
+    res.set("cache-control", "no-store");
     res.sendFile(path.join(staticPath, "index.html"));
   });
 

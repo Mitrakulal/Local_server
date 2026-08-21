@@ -46,11 +46,53 @@ const freshConversation = (): Conversation => ({
   messages: [greeting()],
 });
 
+function normalizeEntry(value: unknown): ChatEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const entry = value as Record<string, unknown>;
+  if (
+    typeof entry.id !== "string" ||
+    (entry.role !== "user" && entry.role !== "assistant") ||
+    typeof entry.content !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: entry.id,
+    role: entry.role,
+    content: entry.content,
+    thinking: typeof entry.thinking === "string" ? entry.thinking : undefined,
+    // A browser refresh cannot safely resume a stream from an older bundle.
+    pending: false,
+    error: entry.error === true,
+  };
+}
+
 function loadSession(): SessionState {
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
-    const parsed = raw ? (JSON.parse(raw) as SessionState) : undefined;
-    if (parsed?.activeId && Array.isArray(parsed.conversations) && parsed.conversations.length) return parsed;
+    const parsed = raw ? (JSON.parse(raw) as Partial<SessionState>) : undefined;
+    const conversations = Array.isArray(parsed?.conversations)
+      ? parsed.conversations.flatMap(value => {
+          if (!value || typeof value !== "object") return [];
+          const conversation = value as Record<string, unknown>;
+          if (typeof conversation.id !== "string" || !Array.isArray(conversation.messages)) return [];
+          const messages = conversation.messages
+            .map(normalizeEntry)
+            .filter((message): message is ChatEntry => message !== null);
+          return [{
+            id: conversation.id,
+            title: typeof conversation.title === "string" ? conversation.title : "New chat",
+            messages: messages.length ? messages : [greeting()],
+          }];
+        })
+      : [];
+    if (conversations.length) {
+      const activeId = conversations.some(conversation => conversation.id === parsed?.activeId)
+        ? parsed!.activeId!
+        : conversations[0]!.id;
+      return { activeId, conversations };
+    }
   } catch {
     // A malformed local session is safely replaced with one empty chat.
   }
