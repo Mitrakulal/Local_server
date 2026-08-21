@@ -26,7 +26,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 
-type ConsoleTab = "overview" | "customers" | "activity";
+type ConsoleTab = "overview" | "provider" | "customers" | "activity";
 
 type Overview = {
   generated_at: string;
@@ -291,6 +291,13 @@ export default function AdminConsole() {
     await navigator.clipboard.writeText(createdKey.api_key);
   };
 
+  const copyApiQuickStart = async () => {
+    await navigator.clipboard.writeText(`curl -N https://google.mattrlabs.online/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $API_KEY" \\
+  -d '{"model":"gemma-e2b","stream":true,"max_tokens":128,"messages":[{"role":"user","content":"Reply with one concise sentence."}]}'`);
+  };
+
   if (!ownerToken) {
     return (
       <main
@@ -358,6 +365,7 @@ export default function AdminConsole() {
 
   const nav: Array<{ id: ConsoleTab; label: string; icon: React.ReactNode }> = [
     { id: "overview", label: "Overview", icon: <Gauge className="h-4 w-4" /> },
+    { id: "provider", label: "Provider launch", icon: <Cpu className="h-4 w-4" /> },
     {
       id: "customers",
       label: "Customers & keys",
@@ -598,6 +606,79 @@ export default function AdminConsole() {
                   </div>
                 </Panel>
               </div>
+            </div>
+          )}
+          {tab === "provider" && (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="panel-label text-orange-200">02 / PROVIDER LAUNCH</p>
+                  <h1 className="mt-1 text-2xl font-semibold tracking-[-0.05em]">
+                    One operating picture for chat, API, and customers
+                  </h1>
+                  <p className="mono mt-2 max-w-3xl text-xs leading-5 text-stone-500">
+                    This private page ties together the public customer API, the owner-only chat,
+                    and the local operations systems. It does not publish the console or expose
+                    any secret.
+                  </p>
+                </div>
+                <span className="mono rounded-full border border-orange-300/25 bg-orange-300/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-orange-100">
+                  invite-only provider
+                </span>
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-2">
+                <Panel className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="panel-label">Live service map</p><h2 className="mt-1 text-base font-semibold tracking-[-0.04em]">What customers and operators use</h2></div>
+                    <Activity className="h-5 w-5 text-orange-300" />
+                  </div>
+                  <div className="mt-5 space-y-3">
+                    {[
+                      { label: "Owner chat", address: "https://google.mattrlabs.online/", detail: "Owner token required; browser-session history only.", healthy: true },
+                      { label: "Customer API", address: "https://google.mattrlabs.online/v1", detail: "One issued gma_live_ key per invited customer.", healthy: true },
+                      { label: "Protected gateway", address: "127.0.0.1:8787", detail: `Four active generations; ${overview?.capacity.per_key_concurrent_limit ?? 1} active request per key.`, healthy: overview?.health.gateway === "ok" },
+                      { label: "Gemma inference", address: "127.0.0.1:8080", detail: overview?.health.model ?? "Awaiting health data", healthy: overview?.health.backend === "reachable" },
+                      { label: "Owner Console", address: "127.0.0.1:3000/admin", detail: "SSH-only control surface; never publicly routed.", healthy: true },
+                    ].map(service => (
+                      <div key={service.label} className="flex gap-3 rounded-xl border border-stone-800 bg-stone-900/35 p-3.5">
+                        {service.healthy ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-300" /> : <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />}
+                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-x-2 gap-y-1"><p className="text-xs font-medium text-stone-100">{service.label}</p><code className="mono text-[10px] text-orange-200">{service.address}</code></div><p className="mono mt-1 text-[10px] leading-4 text-stone-500">{service.detail}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+
+                <Panel className="p-5">
+                  <div className="flex items-center justify-between"><div><p className="panel-label">Customer API onboarding</p><h2 className="mt-1 text-base font-semibold tracking-[-0.04em]">Give each invited user one key</h2></div><KeyRound className="h-5 w-5 text-orange-300" /></div>
+                  <dl className="mt-5 grid grid-cols-2 gap-4">
+                    <div><dt className="panel-label">Base URL</dt><dd className="mono mt-1 text-[11px] text-stone-200">/v1</dd></div>
+                    <div><dt className="panel-label">Model alias</dt><dd className="mono mt-1 text-[11px] text-stone-200">{overview?.health.model ?? "gemma-e2b"}</dd></div>
+                    <div><dt className="panel-label">Standard output</dt><dd className="mono mt-1 text-[11px] text-stone-200">{number(overview?.capacity.default_max_output)} tokens</dd></div>
+                    <div><dt className="panel-label">Default allowance</dt><dd className="mono mt-1 text-[11px] text-stone-200">{overview?.capacity.default_rpm_limit ?? "—"} rpm · {overview?.capacity.default_daily_request_limit ?? "—"}/day</dd></div>
+                  </dl>
+                  <div className="mt-5 rounded-xl border border-stone-800 bg-stone-950 p-4">
+                    <p className="panel-label">Streaming quick start</p>
+                    <pre className="mono mt-3 overflow-x-auto whitespace-pre-wrap text-[10px] leading-5 text-stone-300">{`curl -N https://google.mattrlabs.online/v1/chat/completions \\
+  -H "Authorization: Bearer $API_KEY" \\
+  -d '{"model":"gemma-e2b","stream":true,...}'`}</pre>
+                    <Button variant="outline" onClick={() => void copyApiQuickStart()} className="mt-3 h-8 border-stone-700 bg-stone-900/50 px-2.5 text-[10px] text-stone-200 hover:bg-stone-800"><Copy className="mr-1.5 h-3.5 w-3.5" /> Copy full example</Button>
+                  </div>
+                  <p className="mono mt-4 text-[10px] leading-4 text-stone-500">Create the customer in <button onClick={() => setTab("customers")} className="text-orange-200 underline underline-offset-2">Customers & keys</button>. The raw key appears once, then only its safe prefix remains visible.</p>
+                </Panel>
+              </div>
+
+              <Panel className="p-5">
+                <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="panel-label">Pre-invite safety gate</p><h2 className="mt-1 text-base font-semibold tracking-[-0.04em]">Keep the provider intentionally small and controlled</h2></div><span className="mono text-[10px] text-stone-500">Review before issuing new customer keys</span></div>
+                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { title: "Runtime healthy", detail: overview?.health.backend === "reachable" ? "Gateway can reach Gemma." : "Repair backend health first.", complete: overview?.health.backend === "reachable" },
+                    { title: "Capacity visible", detail: `${overview?.capacity.global_active ?? 0} of ${overview?.capacity.global_limit ?? 4} slots active right now.`, complete: true },
+                    { title: "Key hygiene", detail: "Revoke any test key exposed in a screenshot or pasted command before inviting users.", complete: false },
+                    { title: "Edge abuse brake", detail: "Add the planned Cloudflare rate rule for POST /v1/chat/completions.", complete: false },
+                  ].map(gate => <div key={gate.title} className="rounded-xl border border-stone-800 bg-stone-900/35 p-4"><div className="flex items-center gap-2">{gate.complete ? <CheckCircle2 className="h-4 w-4 text-teal-300" /> : <ShieldAlert className="h-4 w-4 text-orange-300" />}<p className="text-xs font-medium text-stone-100">{gate.title}</p></div><p className="mono mt-2 text-[10px] leading-4 text-stone-500">{gate.detail}</p></div>)}
+                </div>
+              </Panel>
             </div>
           )}
           {tab === "customers" && (
