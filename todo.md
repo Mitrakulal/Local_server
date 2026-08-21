@@ -1,5 +1,7 @@
 # Phase 0 delivery checklist
 
+- [x] Record a minimal genuine repository-maintenance update under the user's GitHub author identity so the commit is associated with the intended profile.
+
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
 - [x] Build the concurrent streaming request runner with cancellation and bounded launch behavior.
