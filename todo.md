@@ -1,6 +1,7 @@
 # Phase 0 delivery checklist
 
 - [x] Record a minimal genuine repository-maintenance update under the user's GitHub author identity so the commit is associated with the intended profile.
+- [ ] Consolidate the live chat, customer API-key service, Owner Console, usage controls, and operating documentation into one clear small-LLM-provider product model.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
