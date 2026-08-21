@@ -90,47 +90,47 @@ The mark is a bold orange calibration ring interrupted by three offset tick mark
 
 **Probability:** 0.089
 
-## Chosen chat approach: Nocturne Ledger
+## Revised chosen chat approach: Luminous Utility
 
 ### Design Movement
-Contemporary editorial minimalism combined with a low-light writing desk aesthetic. It is intentionally separate from the operational Instrument Panel used by the private Load Lab.
+Apple-inspired product minimalism interpreted as a calm local-AI utility. It is intentionally separate from the operational Instrument Panel used by the private Load Lab: the chat is light, quiet, tactile, and focused on thought rather than system machinery.
 
 ### Core Principles
-1. Conversation is the primary artifact: messages receive quiet, readable space and never compete with dashboard-like metrics.
-2. The interface feels composed rather than glossy: texture, shadow, and material contrast replace neon gradients and generic rounded cards.
-3. The application reveals its bounded nature clearly through compact capacity and session indicators rather than promotional claims.
-4. Motion is purposeful: a response arrives in a gentle upward reveal while high-frequency controls remain immediate.
+1. Conversation is the primary artifact: generous reading width and near-invisible chrome keep focus on the exchange.
+2. Surfaces are pale, soft, and layered with subtle borders and restrained shadows rather than dark panels or decorative texture.
+3. Technical status is available but secondary, represented by a single quiet availability dot and plain language instead of dashboard metrics.
+4. Motion is physically quiet: short opacity and transform transitions support a feeling of polish without becoming theatrical.
 
 ### Color Philosophy
-Ink-black and deep plum create a focused night-writing field; weathered brass marks intentional actions and the service identity; parchment text areas provide relief without turning the interface into a bright generic messenger. A muted moss signal denotes a healthy connected model.
+Warm white and soft pearl-gray create a daylight workspace with a cool blue-violet accent reserved for intentional actions. Graphite typography maintains contrast and a subtle mint status signal communicates availability. The interface should feel spacious and considered, never clinical or generic.
 
 ### Layout Paradigm
-The desktop view is an asymmetric editorial desk: a narrow left rail for the current local session and clear-chat action, a tall central conversation folio, and a slender right margin for live model/capacity context. On mobile, the rails collapse into compact top and bottom sheets while the conversation remains full width.
+The desktop view uses an airy three-zone frame: a narrow, pale navigation column; a generous central conversation field; and a thin contextual margin that disappears below desktop width. On mobile, navigation becomes a compact top bar while the conversation keeps the full visual field.
 
 ### Signature Elements
-1. A small brass `oracle aperture` mark, formed from an interrupted ring and horizontal answer line.
-2. A subtle paper-grain conversation folio floating over an ink field.
-3. An `alive` response cursor that becomes a calm brass rule when streaming finishes.
+1. A small translucent prism mark that refracts the accent color without using a wordmark as the logo.
+2. Layered frosted-white surfaces with hairline borders and low-elevation shadows.
+3. A precise live cursor that resolves into a cool accent rule when streaming finishes.
 
 ### Interaction Philosophy
-The composer treats each prompt as a deliberate entry: Enter sends, Shift+Enter adds a line, and Clear conversation explicitly resets browser-session history. No fake saved history, ratings, testimonials, or activity counters are shown.
+The composer remains the primary tactile object: Enter sends, Shift+Enter adds a line, and New conversation explicitly resets browser-session history. Controls use instant but tactile press feedback. No fake saved history, ratings, testimonials, or activity counters are shown.
 
 ### Animation
-Use transform/opacity transitions between 140–260ms with a crisp custom ease. New messages rise by 6px while fading in; streaming state uses a slow opacity pulse on the response cursor. Respect reduced-motion preferences and avoid animated gradients.
+Use transform/opacity transitions between 140–240ms with a crisp custom ease. New messages rise by 4px while fading in; the streaming cursor uses a quiet opacity pulse. Respect reduced-motion preferences and avoid animated gradients.
 
 ### Typography System
-Use **DM Sans** for controls and compact labels, **Fraunces** for the welcome/empty-state editorial headline, and **IBM Plex Mono** for model/capacity technical context. Conversation body uses DM Sans at a comfortable reading measure.
+Use the system UI stack for controls and conversation body for native-platform clarity. Use a lightly weighted serif only for the welcome statement, and IBM Plex Mono for compact technical context. Keep hierarchy spacious: a large welcoming headline, comfortable 16px conversation text, and small but high-contrast metadata.
 
 ### Brand Essence
-**A quiet private writing room for direct conversations with a carefully bounded local model.**
+**A refined private conversation surface for a carefully bounded local model.**
 
-**Personality:** deliberate, warm, lucid.
+**Personality:** calm, exact, approachable.
 
 ### Brand Voice
-Headlines are brief and literary without being vague; system copy names real limits in plain language. Example lines: “A local mind, kept in view.” and “This conversation lives in this browser session.”
+Headlines are direct and quiet; system copy names real limits in plain language. Example lines: “A private space to think.” and “This conversation stays in this browser session.”
 
 ### Wordmark & Logo
-The `ORBIT` mark is an interrupted brass aperture with a narrow horizontal reply line passing through its lower arc. It is symbol-first and paired with a spaced, uppercase wordmark rather than a default text logo.
+The mark is a translucent rounded prism containing a small cool-blue refracted dot. It is symbol-first, used beside a simple product name in the system UI rather than a stylized default wordmark.
 
 ### Signature Brand Color
-**Weathered Brass — `#C9954B`**
+**Prism Blue — `#5B7CFA`**
