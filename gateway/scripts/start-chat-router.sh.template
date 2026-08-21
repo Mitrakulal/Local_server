@@ -3,4 +3,5 @@
 set -euo pipefail
 
 cd "__PROJECT_DIRECTORY__"
+export PATH="__NODE_DIRECTORY__:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
 exec __PNPM_BINARY__ chat:start

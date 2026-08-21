@@ -60,6 +60,7 @@
 - [x] Implement and test local same-host routing so `google.mattrlabs.online` can later dispatch browser chat at `/` and preserve `/v1/*` API paths through the existing gateway.
 - [ ] Create the owner-chat secrets and internal `owner-chat` gateway key on the Mac mini, then validate local chat streaming and `/v1` API preservation through port 3001.
 - [ ] Install the validated port-3001 chat router as a user-level launchd service and only then switch the Cloudflare tunnel target from port 8787 to port 3001 with rollback ready.
+- [ ] Correct the chat-router launchd template to invoke Node through an absolute path and reinstall it with underscore placeholder substitution after the initial service start failed under launchd.
 - [ ] Create the proxied Cloudflare DNS CNAME for the selected API subdomain, pointing to this tunnel UUID before reloading the local ingress configuration.
 - [ ] Confirm the selected API hostname is intentionally named and matches exactly between the Cloudflare DNS CNAME and local cloudflared YAML ingress rule.
 - [x] Select `google.mattrlabs.online` as the intentional Phase 2 public API hostname.

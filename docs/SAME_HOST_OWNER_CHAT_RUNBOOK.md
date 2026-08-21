@@ -104,15 +104,23 @@ After the local tests pass, stop the foreground `pnpm chat:start` process with `
 cd ~/Local_server
 
 PROJECT_DIRECTORY="$HOME/Local_server"
+NODE_BINARY="$(command -v node)"
+NODE_DIRECTORY="$(dirname "$NODE_BINARY")"
 PNPM_BINARY="$(command -v pnpm)"
 
 sed \
   -e "s|__PROJECT_DIRECTORY__|$PROJECT_DIRECTORY|g" \
+  -e "s|__NODE_DIRECTORY__|$NODE_DIRECTORY|g" \
   -e "s|__PNPM_BINARY__|$PNPM_BINARY|g" \
   gateway/scripts/start-chat-router.sh.template \
   > gateway/scripts/start-chat-router.sh
 
 chmod 700 gateway/scripts/start-chat-router.sh
+
+if grep -q '__[A-Z_]*__' gateway/scripts/start-chat-router.sh; then
+  echo 'Template substitution failed; do not start the service.'
+  exit 1
+fi
 
 sed -e "s|__PROJECT_DIRECTORY__|$PROJECT_DIRECTORY|g" \
   gateway/launchd/com.inunity.gemma-chat-router.plist.template \
