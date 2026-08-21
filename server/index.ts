@@ -43,7 +43,7 @@ async function startServer() {
     res.sendFile(path.join(staticPath, "index.html"));
   });
 
-  server.listen(port, () => {
+  server.listen(port, "127.0.0.1", () => {
     console.log(`Same-host chat router running on http://127.0.0.1:${port}/`);
   });
 }
