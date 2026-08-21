@@ -198,8 +198,13 @@ export default function OwnerChat() {
     [session]
   );
 
-  useEffect(() => window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)), [session]);
-  useEffect(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [activeConversation.messages, isStreaming]);
+  useEffect(() => {
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }, [session]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [activeConversation.messages, isStreaming]);
 
   const updateActive = (apply: (conversation: Conversation) => Conversation) => {
     setSession(current => ({ ...current, conversations: current.conversations.map(conversation => conversation.id === current.activeId ? apply(conversation) : conversation) }));
