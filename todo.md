@@ -11,6 +11,9 @@
 - [x] Implement the approved public-chat policy: three server-enforced active seats, 1,024 standard output tokens, and an explicit 2,048-token long-answer mode.
 - [ ] Roll out the public-chat release on the Mac mini with a fresh internal public-chat key that has three active seats and a 2,048-token allowance, then verify the public domain and issued-key API.
 - [x] Verify locally that the public chat opens without a manager-key screen, displays live 0/3 availability, offers Standard 1K and Long 2K controls, and shows an API-coming-soon preview without exposing key issuance.
+- [ ] Add a first-visit public-chat onboarding sequence, remove inactive composer/header controls, and retain the model dropdown with Gemma E2B active plus disabled coming-soon model entries.
+- [x] Verify the onboarding locally: it opens on a fresh browser session, explains the three-seat capacity contract, and leaves the underlying public chat accessible after completion.
+- [x] Verify the cleaned public workspace locally: inactive header/composer controls are removed and the model dropdown shows Gemma E2B as live plus Qwen 14B and additional local models as coming soon.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.

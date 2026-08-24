@@ -9,22 +9,16 @@ import {
   Check,
   ChevronDown,
   Copy,
-  Ellipsis,
-  Menu,
   MessageCirclePlus,
   LockKeyhole,
-  Paperclip,
-  Plus,
   Search,
   Send,
-  SlidersHorizontal,
-  ThumbsDown,
-  ThumbsUp,
+  Sparkles,
+  UsersRound,
   X,
 } from "lucide-react";
 import {
   ChangeEvent,
-  FormEvent,
   KeyboardEvent,
   UIEvent,
   useEffect,
@@ -55,6 +49,7 @@ type PublicChatStatus = {
 };
 
 const SESSION_KEY = "mattr-chat-workspace-v2";
+const ONBOARDING_KEY = "mattr-chat-onboarding-v1";
 const MAX_STORED_CONVERSATIONS = 12;
 const STICKY_SCROLL_THRESHOLD = 96;
 const INITIAL_PUBLIC_STATUS: PublicChatStatus = {
@@ -196,6 +191,74 @@ function ThinkingPanel({ message }: { message: ChatEntry }) {
   );
 }
 
+function OnboardingOverlay({
+  step,
+  capacity,
+  onBack,
+  onNext,
+  onComplete,
+}: {
+  step: number;
+  capacity: number;
+  onBack: () => void;
+  onNext: () => void;
+  onComplete: () => void;
+}) {
+  const cards = [
+    {
+      eyebrow: "Welcome to Mattr Chat",
+      title: "A focused local AI workspace.",
+      body: "Ask, think, write, and explore in a small shared chat experience. No account or setup is needed to begin.",
+      icon: Sparkles,
+    },
+    {
+      eyebrow: "Shared live capacity",
+      title: `${capacity} people can generate at once.`,
+      body: "The live capacity label shows what is available. When all seats are in use, Mattr Chat asks new requests to wait instead of silently queuing them.",
+      icon: UsersRound,
+    },
+    {
+      eyebrow: "Your session",
+      title: "Chats stay in this browser.",
+      body: "There is no sign-in or cross-device history yet. Closing this browser session starts fresh, and recent chats are not a permanent transcript library.",
+      icon: CircleDot,
+    },
+    {
+      eyebrow: "Deliberately simple",
+      title: "Some familiar features are not here yet.",
+      body: "There is no web browsing, file upload, tools, custom assistants, or public API signup. Gemma E2B is live; Qwen 14B and more local models are planned.",
+      icon: LockKeyhole,
+    },
+  ];
+  const card = cards[step]!;
+  const Icon = card.icon;
+  const finalStep = step === cards.length - 1;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#f7f8fc]/95 p-5 text-[#24262d] backdrop-blur-sm">
+      <section className="w-full max-w-[500px] rounded-[24px] border border-white bg-white p-6 shadow-[0_24px_70px_rgba(42,47,70,0.18)] sm:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div>
+          <button onClick={onComplete} className="rounded-[8px] px-2 py-1 text-[11px] font-medium text-[#818592] transition-colors hover:bg-[#f2f3f7] hover:text-[#555a66]">Skip</button>
+        </div>
+        <div className="mt-9 grid h-11 w-11 place-items-center rounded-[14px] bg-[#e8ebff] text-[#596ccc]"><Icon className="h-5 w-5" /></div>
+        <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7585c8]">{card.eyebrow}</p>
+        <h1 className="mt-2 text-[30px] font-semibold tracking-[-0.045em] text-[#262932] sm:text-[34px]">{card.title}</h1>
+        <p className="mt-4 max-w-[420px] text-[15px] leading-7 text-[#727783]">{card.body}</p>
+        <div className="mt-9 flex items-center justify-between gap-4">
+          <div className="flex gap-1.5" aria-label={`Step ${step + 1} of ${cards.length}`}>
+            {cards.map((_, index) => <span key={index} className={`h-1.5 rounded-full transition-all ${index === step ? "w-6 bg-[#6e7fda]" : "w-1.5 bg-[#dfe2eb]"}`} />)}
+          </div>
+          <div className="flex items-center gap-2">
+            {step > 0 && <button onClick={onBack} className="rounded-[10px] px-3 py-2 text-[12px] font-semibold text-[#696d78] transition-colors hover:bg-[#f2f3f7]">Back</button>}
+            <button onClick={finalStep ? onComplete : onNext} className="rounded-[10px] bg-[#252831] px-4 py-2 text-[12px] font-semibold text-white transition-transform hover:bg-[#343741] active:scale-[0.97]">{finalStep ? "Start chatting" : "Next"}</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function OwnerChat() {
   const [session, setSession] = useState<SessionState>(() => loadSession());
   const [draft, setDraft] = useState("");
@@ -205,6 +268,14 @@ export default function OwnerChat() {
   const [publicStatus, setPublicStatus] = useState<PublicChatStatus>(INITIAL_PUBLIC_STATUS);
   const [answerMode, setAnswerMode] = useState<AnswerMode>("standard");
   const [apiPreviewOpen, setApiPreviewOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
+    try {
+      return window.sessionStorage.getItem(ONBOARDING_KEY) === "complete" ? null : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [historyQuery, setHistoryQuery] = useState("");
   const [historySearchOpen, setHistorySearchOpen] = useState(false);
@@ -457,6 +528,15 @@ export default function OwnerChat() {
     }
   };
 
+  const completeOnboarding = () => {
+    try {
+      window.sessionStorage.setItem(ONBOARDING_KEY, "complete");
+    } catch {
+      // The public chat remains usable even if browser storage is unavailable.
+    }
+    setOnboardingStep(null);
+  };
+
   const capacityTone = publicStatus.accepting
     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : "border-amber-200 bg-amber-50 text-amber-700";
@@ -466,13 +546,11 @@ export default function OwnerChat() {
     : publicStatus.standard_max_output;
 
   return (
+    <>
     <main className="reference-chat-shell h-[100dvh] overflow-hidden bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
       <div className="mx-auto grid h-full min-h-0 max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:h-[calc(100dvh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
         <aside className="hidden min-h-0 flex-col overflow-hidden border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex">
-          <div className="flex shrink-0 items-center justify-between px-1">
-            <div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div>
-            <button className="rounded-lg p-1.5 text-[#7a7d88] transition-colors hover:bg-white active:scale-[0.97]" aria-label="Collapse navigation"><Menu className="h-4 w-4" /></button>
-          </div>
+          <div className="flex shrink-0 items-center px-1"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div></div>
 
           <button onClick={createConversation} disabled={isStreaming} className="mt-7 flex shrink-0 items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] font-medium text-[#31343d] transition-colors hover:bg-white disabled:opacity-45"><MessageCirclePlus className="h-4 w-4" /> New chat</button>
           <button onClick={() => { setHistorySearchOpen(open => !open); setHistoryQuery(""); }} className="mt-1 flex shrink-0 items-center gap-2 rounded-[11px] px-2.5 py-2.5 text-left text-[13px] text-[#686b75] transition-colors hover:bg-white"><Search className="h-4 w-4" /> Search</button>
@@ -500,8 +578,8 @@ export default function OwnerChat() {
 
         <section className="relative flex min-h-0 flex-col overflow-hidden bg-[#fbfcfd]">
           <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7">
-            <div className="flex items-center gap-2.5"><button className="rounded-lg p-1.5 text-[#747783] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><button className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943]"><span>Gemma E2B</span><ChevronDown className="h-3.5 w-3.5 text-[#7b7e88]" /></button></div>
-            <div className="flex items-center gap-1.5"><span className={`hidden rounded-full border px-2.5 py-1 text-[10px] font-medium sm:inline-flex ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} />Live capacity · {capacityLabel}</span><button onClick={() => setApiPreviewOpen(open => !open)} className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5]"><LockKeyhole className="h-3.5 w-3.5" /> API</button><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button><button className="rounded-[8px] p-1.5 text-[#6f727c] transition-colors hover:bg-[#f1f2f5]" aria-label="More options"><Ellipsis className="h-4 w-4" /></button></div>
+            <div className="relative"><button onClick={() => setModelMenuOpen(open => !open)} aria-expanded={modelMenuOpen} className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943] transition-colors hover:bg-[#e8eaf0]"><span>Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div className="absolute left-0 top-[38px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div>
+            <div className="flex items-center gap-1.5"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-medium sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{capacityLabel}</span><button onClick={() => setApiPreviewOpen(open => !open)} className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5]"><LockKeyhole className="h-3.5 w-3.5" /> API</button><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button></div>
           </header>
 
           {capacityNotice && <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-[11px] border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 sm:mx-7"><span><span className="font-semibold">Live chat is busy.</span> {capacityNotice}</span><button onClick={() => setCapacityNotice("")} className="rounded p-1 text-amber-700 hover:bg-amber-100" aria-label="Dismiss capacity message"><X className="h-3.5 w-3.5" /></button></div>}
@@ -517,7 +595,7 @@ export default function OwnerChat() {
                     {message.role === "assistant" ? <p className="whitespace-pre-wrap break-words">{message.content || (message.pending ? "" : "No final answer was returned.")}</p> : <p className="whitespace-pre-wrap">{message.content}</p>}
                     {message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}
                   </div>
-                  {message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Helpful"><ThumbsUp className="h-3.5 w-3.5" /></button><button className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Not helpful"><ThumbsDown className="h-3.5 w-3.5" /></button></div>}
+                  {message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button></div>}
                 </article>
               ))}
               <div ref={bottomRef} />
@@ -530,7 +608,7 @@ export default function OwnerChat() {
             <div className="mx-auto max-w-[700px]">
               <div className="rounded-[18px] border border-[#dfe1e8] bg-white px-3 py-2 shadow-[0_7px_20px_rgba(39,43,57,0.08)] transition-shadow focus-within:border-[#aab5eb] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10">
                 <textarea ref={composerRef} value={draft} onChange={onDraftChange} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={1} disabled={isStreaming} className="max-h-40 min-h-[48px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2 text-[15px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50" />
-                <div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center gap-1"><button className="grid h-8 w-8 place-items-center rounded-[8px] text-[#747783] transition-colors hover:bg-[#f1f2f5]" aria-label="Add"><Plus className="h-4 w-4" /></button><div className="ml-1 flex items-center rounded-[9px] bg-[#f1f2f6] p-0.5 text-[10px] font-medium"><button onClick={() => setAnswerMode("standard")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "standard" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Standard · 1K</button><button onClick={() => setAnswerMode("long")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "long" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Long · 2K</button></div></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div>
+                <div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center rounded-[9px] bg-[#f1f2f6] p-0.5 text-[10px] font-medium"><button onClick={() => setAnswerMode("standard")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "standard" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Standard · 1K</button><button onClick={() => setAnswerMode("long")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "long" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Long · 2K</button></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div>
               </div>
               {error && <p className="mt-2 text-xs text-[#b23b35]">{error}</p>}
               <p className="mt-2 text-center text-[10px] text-[#9a9da6]">{selectedOutput.toLocaleString()} token {answerMode === "long" ? "long-answer" : "standard"} limit · Enter to send · Shift + Enter for a new line.</p>
@@ -539,5 +617,7 @@ export default function OwnerChat() {
         </section>
       </div>
     </main>
+    {onboardingStep !== null && <OnboardingOverlay step={onboardingStep} capacity={publicStatus.limit} onBack={() => setOnboardingStep(current => Math.max(0, (current ?? 0) - 1))} onNext={() => setOnboardingStep(current => Math.min(3, (current ?? 0) + 1))} onComplete={completeOnboarding} />}
+    </>
   );
 }
