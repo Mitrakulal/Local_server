@@ -26,6 +26,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 
 type Role = "user" | "assistant";
 type ChatEntry = {
@@ -189,6 +190,121 @@ function ThinkingPanel({ message }: { message: ChatEntry }) {
       </div>
     </details>
   );
+}
+
+/**
+ * Safe presentation-only Markdown subset. It never injects HTML, evaluates
+ * links, or mounts third-party rendering code inside streamed model output.
+ */
+function InlineMarkdown({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  const pieces = text.split(/(\*\*[\s\S]+?\*\*|`[^`\n]+`)/g);
+  pieces.forEach((piece, index) => {
+    if (!piece) return;
+    if (piece.startsWith("**") && piece.endsWith("**")) {
+      nodes.push(<strong key={index} className="font-semibold text-[#24262d]">{piece.slice(2, -2)}</strong>);
+      return;
+    }
+    if (piece.startsWith("`") && piece.endsWith("`")) {
+      nodes.push(<code key={index} className="rounded bg-[#eff1f6] px-1.5 py-0.5 font-mono text-[0.88em] text-[#46506c]">{piece.slice(1, -1)}</code>);
+      return;
+    }
+    nodes.push(piece);
+  });
+  return <>{nodes}</>;
+}
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Code remains selectable if browser clipboard access is unavailable.
+    }
+  };
+
+  return (
+    <section className="my-3 overflow-hidden rounded-[12px] border border-[#252936] bg-[#1f222a] text-[#edf0f7] shadow-[0_6px_18px_rgba(32,36,48,0.12)]">
+      <header className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-[#b7bfd9]">{language || "code"}</span>
+        <button onClick={() => void copy()} className="flex items-center gap-1.5 rounded-[7px] px-2 py-1 text-[10px] font-medium text-[#d9def0] transition-colors hover:bg-white/10" aria-label="Copy code">{copied ? <Check className="h-3 w-3 text-[#9ce0b2]" /> : <Copy className="h-3 w-3" />}{copied ? "Copied" : "Copy"}</button>
+      </header>
+      <pre className="overflow-x-auto px-3 py-3 text-[12px] leading-5"><code className="font-mono">{code}</code></pre>
+    </section>
+  );
+}
+
+type MarkdownBlock =
+  | { kind: "paragraph"; lines: string[] }
+  | { kind: "heading"; text: string }
+  | { kind: "list"; ordered: boolean; items: string[] }
+  | { kind: "code"; language: string; code: string };
+
+function markdownBlocks(content: string): MarkdownBlock[] {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index] ?? "";
+    const fence = /^```([^\s]*)\s*$/.exec(line);
+    if (fence) {
+      const code: string[] = [];
+      index += 1;
+      while (index < lines.length && !/^```\s*$/.test(lines[index] ?? "")) code.push(lines[index++] ?? "");
+      if (index < lines.length) index += 1;
+      blocks.push({ kind: "code", language: fence[1] || "code", code: code.join("\n") });
+      continue;
+    }
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
+      blocks.push({ kind: "heading", text: heading[2] ?? "" });
+      index += 1;
+      continue;
+    }
+    const unordered = /^[-*+]\s+(.+)$/.exec(line);
+    const ordered = /^\d+[.)]\s+(.+)$/.exec(line);
+    if (unordered || ordered) {
+      const isOrdered = Boolean(ordered);
+      const matcher = isOrdered ? /^\d+[.)]\s+(.+)$/ : /^[-*+]\s+(.+)$/;
+      const items: string[] = [];
+      while (index < lines.length) {
+        const match = matcher.exec(lines[index] ?? "");
+        if (!match) break;
+        items.push(match[1] ?? "");
+        index += 1;
+      }
+      blocks.push({ kind: "list", ordered: isOrdered, items });
+      continue;
+    }
+    if (!line.trim()) {
+      index += 1;
+      continue;
+    }
+    const paragraph: string[] = [];
+    while (index < lines.length) {
+      const next = lines[index] ?? "";
+      if (!next.trim() || /^```/.test(next) || /^(#{1,3})\s+/.test(next) || /^[-*+]\s+/.test(next) || /^\d+[.)]\s+/.test(next)) break;
+      paragraph.push(next);
+      index += 1;
+    }
+    blocks.push({ kind: "paragraph", lines: paragraph });
+  }
+  return blocks;
+}
+
+function FormattedAnswer({ content }: { content: string }) {
+  return <div className="space-y-3">{markdownBlocks(content).map((block, index) => {
+    if (block.kind === "code") return <CodeBlock key={index} code={block.code} language={block.language} />;
+    if (block.kind === "heading") return <h3 key={index} className="pt-1 text-[17px] font-semibold tracking-[-0.02em] text-[#25272f]"><InlineMarkdown text={block.text} /></h3>;
+    if (block.kind === "list") {
+      const List = block.ordered ? "ol" : "ul";
+      return <List key={index} className={`${block.ordered ? "list-decimal" : "list-disc"} space-y-1 pl-5 marker:text-[#7c83a0]`}>{block.items.map((item, itemIndex) => <li key={itemIndex} className="pl-0.5"><InlineMarkdown text={item} /></li>)}</List>;
+    }
+    return <p key={index} className="whitespace-pre-wrap break-words">{block.lines.map((line, lineIndex) => <span key={lineIndex}>{lineIndex > 0 && <br />}<InlineMarkdown text={line} /></span>)}</p>;
+  })}</div>;
 }
 
 function OnboardingOverlay({
@@ -587,7 +703,7 @@ export default function OwnerChat() {
                 <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}>
                   <ThinkingPanel message={message} />
                   <div className={`reference-message ${message.role === "user" ? "rounded-[11px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[15px] leading-7 text-[#2f3138]"}`}>
-                    {message.role === "assistant" ? <p className="whitespace-pre-wrap break-words">{message.content || (message.pending ? "" : "No final answer was returned.")}</p> : <p className="whitespace-pre-wrap">{message.content}</p>}
+                    {message.role === "assistant" ? <FormattedAnswer content={message.content || (message.pending ? "" : "No final answer was returned.")} /> : <p className="whitespace-pre-wrap">{message.content}</p>}
                     {message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}
                   </div>
                   {message.role === "assistant" && !message.pending && !message.error && <div className="mt-2 flex items-center gap-1 text-[#8a8d96]"><button onClick={() => void copyMessage(message)} className="rounded-md p-1.5 transition-colors hover:bg-[#f0f1f5]" aria-label="Copy response">{copiedId === message.id ? <Check className="h-3.5 w-3.5 text-[#5a7a62]" /> : <Copy className="h-3.5 w-3.5" />}</button></div>}

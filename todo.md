@@ -16,6 +16,9 @@
 - [x] Verify the cleaned public workspace locally: inactive header/composer controls are removed and the model dropdown shows Gemma E2B as live plus Qwen 14B and additional local models as coming soon.
 - [x] Remove internal/private disclosures from the public chat, including the API explanation and limitation-heavy onboarding content, then replace them with concise visitor-relevant product messaging.
 - [x] Verify the revised public presentation locally: the onboarding is visitor-focused and the workspace contains only a compact locked API label with no private access or implementation details.
+- [x] Render public-chat answers with a safe built-in Markdown subset—bold, lists, inline code, and fenced code blocks with copy actions—without reintroducing the unstable external renderer.
+- [x] Prepare a browser-only formatted-answer fixture covering headings, bold text, lists, inline code, and a fenced JavaScript block for safe visual verification.
+- [x] Verify the safe Markdown subset locally: bold emphasis, headings, lists, inline code, dark fenced code blocks, and the code-block copy action all render without a browser error.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
