@@ -19,6 +19,9 @@
 - [x] Render public-chat answers with a safe built-in Markdown subset—bold, lists, inline code, and fenced code blocks with copy actions—without reintroducing the unstable external renderer.
 - [x] Prepare a browser-only formatted-answer fixture covering headings, bold text, lists, inline code, and a fenced JavaScript block for safe visual verification.
 - [x] Verify the safe Markdown subset locally: bold emphasis, headings, lists, inline code, dark fenced code blocks, and the code-block copy action all render without a browser error.
+- [ ] Add a concise clickable API-coming-soon panel with a disabled Create API key action, then refine Mattr Chat into a mobile-first workspace with responsive navigation, feed, composer, and touch controls. Build, type, route, desktop-interaction, and phone-width first-visit checks pass; confirm drawer and composer interaction on a physical phone after rollout.
+- [x] Verify the mobile first-visit surface at 375×812: the onboarding card is legible, touch-sized, centered, and free of horizontal overflow.
+- [x] Verify the revised public workspace loads after onboarding completion with the compact API control, responsive composer, and stable conversation area intact.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.

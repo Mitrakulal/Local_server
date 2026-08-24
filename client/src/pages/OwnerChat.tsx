@@ -11,6 +11,7 @@ import {
   Copy,
   MessageCirclePlus,
   LockKeyhole,
+  Menu,
   Search,
   Send,
   Sparkles,
@@ -381,7 +382,9 @@ export default function OwnerChat() {
   const [capacityNotice, setCapacityNotice] = useState("");
   const [publicStatus, setPublicStatus] = useState<PublicChatStatus>(INITIAL_PUBLIC_STATUS);
   const [answerMode, setAnswerMode] = useState<AnswerMode>("standard");
+  const [apiTeaserOpen, setApiTeaserOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
     try {
       return window.sessionStorage.getItem(ONBOARDING_KEY) === "complete" ? null : 0;
@@ -470,12 +473,14 @@ export default function OwnerChat() {
     }));
     setError("");
     setDraft("");
+    setMobileHistoryOpen(false);
   };
 
   const selectConversation = (conversationId: string) => {
     if (isStreaming) return;
     stickToBottomRef.current = true;
     setShowJumpToLatest(false);
+    setMobileHistoryOpen(false);
     setSession(current => ({ ...current, activeId: conversationId }));
   };
 
@@ -660,6 +665,15 @@ export default function OwnerChat() {
 
   return (
     <>
+    {mobileHistoryOpen && <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Conversations">
+      <button onClick={() => setMobileHistoryOpen(false)} className="absolute inset-0 bg-[#20232d]/25 backdrop-blur-[2px]" aria-label="Close conversations" />
+      <aside className="absolute inset-y-0 left-0 flex w-[min(84vw,340px)] flex-col border-r border-[#e1e3ea] bg-[#f7f8fc] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[18px_0_45px_rgba(35,40,58,0.16)]">
+        <div className="flex items-center justify-between"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div><button onClick={() => setMobileHistoryOpen(false)} className="grid h-10 w-10 place-items-center rounded-[11px] text-[#6f7481] transition-colors hover:bg-white" aria-label="Close conversations"><X className="h-4 w-4" /></button></div>
+        <button onClick={createConversation} disabled={isStreaming} className="mt-6 flex min-h-11 items-center gap-2 rounded-[11px] bg-white px-3 text-left text-[13px] font-semibold text-[#343844] shadow-[0_3px_12px_rgba(39,43,57,0.06)] disabled:opacity-45"><MessageCirclePlus className="h-4 w-4" /> New chat</button>
+        <div className="mt-6 min-h-0 flex-1 border-t border-[#e0e2e9] pt-4"><p className="px-1 text-[10px] font-semibold uppercase tracking-[0.11em] text-[#9295a0]">This session</p><div className="mt-2 min-h-0 space-y-1 overflow-y-auto"><button onClick={() => { setHistorySearchOpen(open => !open); setHistoryQuery(""); }} className="flex min-h-10 w-full items-center gap-2 rounded-[10px] px-2.5 text-left text-[12px] text-[#727681] transition-colors hover:bg-white"><Search className="h-3.5 w-3.5" /> Search chats</button>{visibleConversations.map(conversation => <button key={conversation.id} onClick={() => selectConversation(conversation.id)} className={`min-h-11 w-full truncate rounded-[10px] px-2.5 text-left text-[12px] transition-colors ${conversation.id === activeConversation.id ? "bg-[#e4e7fb] font-medium text-[#373d62]" : "text-[#666a75] hover:bg-white"}`}>{conversation.title}</button>)}</div></div>
+        <p className="mt-4 px-1 text-[11px] leading-5 text-[#858894]">Recent chats stay in this browser session.</p>
+      </aside>
+    </div>}
     <main className="reference-chat-shell h-[100dvh] overflow-hidden bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
       <div className="mx-auto grid h-full min-h-0 max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:h-[calc(100dvh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
         <aside className="hidden min-h-0 flex-col overflow-hidden border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex">
@@ -690,19 +704,21 @@ export default function OwnerChat() {
         </aside>
 
         <section className="relative flex min-h-0 flex-col overflow-hidden bg-[#fbfcfd]">
-          <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7">
-            <div className="relative"><button onClick={() => setModelMenuOpen(open => !open)} aria-expanded={modelMenuOpen} className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943] transition-colors hover:bg-[#e8eaf0]"><span>Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div className="absolute left-0 top-[38px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div>
-            <div className="flex items-center gap-1.5"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-medium sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{capacityLabel}</span><span title="API access coming soon" className="flex cursor-default items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#a1a5af]"><LockKeyhole className="h-3.5 w-3.5" /> API</span><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button></div>
+          <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-3 sm:px-7">
+            <div className="flex min-w-0 items-center gap-1.5"><button onClick={() => setMobileHistoryOpen(true)} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-[#656a76] transition-colors hover:bg-[#f1f2f5] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><div className="relative"><button onClick={() => setModelMenuOpen(open => !open)} aria-expanded={modelMenuOpen} className="flex min-h-10 items-center gap-2 rounded-[9px] bg-[#f0f2f7] px-2.5 text-[12px] font-medium text-[#363943] transition-colors hover:bg-[#e8eaf0]"><span className="truncate">Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div className="absolute left-0 top-[44px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div></div>
+            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5"><span className={`inline-flex min-h-8 items-center rounded-full border px-2 text-[10px] font-medium sm:min-h-0 sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{publicStatus.active} / {publicStatus.limit}</span><button onClick={() => setApiTeaserOpen(open => !open)} aria-expanded={apiTeaserOpen} className="grid min-h-10 min-w-10 place-items-center rounded-[10px] text-[#8e94a1] transition-colors hover:bg-[#f1f2f5] sm:flex sm:min-w-0 sm:gap-1.5 sm:px-2.5" aria-label="API coming soon"><LockKeyhole className="h-3.5 w-3.5" /><span className="hidden sm:inline">API</span></button><button onClick={clearConversation} disabled={isStreaming} className="hidden min-h-10 rounded-[10px] px-3 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40 sm:inline-flex">Clear</button></div>
           </header>
+
+          {apiTeaserOpen && <div className="absolute right-3 top-[70px] z-30 w-[min(330px,calc(100%-1.5rem))] rounded-[16px] border border-[#dce0eb] bg-white p-4 shadow-[0_16px_35px_rgba(40,46,67,0.16)] sm:right-7"><div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-[#333741]">Developer API</p><p className="mt-1 text-[12px] leading-5 text-[#747987]">Bring Mattr Chat into your own workflow.</p></div><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#7c8ee6]" /></div><button disabled className="mt-4 flex min-h-10 w-full items-center justify-center rounded-[10px] border border-[#e0e3ec] bg-[#f5f6f9] text-[12px] font-semibold text-[#9aa0ae]">Create API key <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] uppercase tracking-[0.06em] text-[#7e86a5]">Coming soon</span></button></div>}
 
           {capacityNotice && <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-[11px] border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 sm:mx-7"><span><span className="font-semibold">Live chat is busy.</span> {capacityNotice}</span><button onClick={() => setCapacityNotice("")} className="rounded p-1 text-amber-700 hover:bg-amber-100" aria-label="Dismiss capacity message"><X className="h-3.5 w-3.5" /></button></div>}
 
-          <div ref={messageScrollRef} onScroll={onMessageScroll} className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8 md:px-14">
-            <div className="mx-auto max-w-[700px] space-y-7 pb-8">
+          <div ref={messageScrollRef} onScroll={onMessageScroll} className="min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-8 sm:py-8 md:px-14">
+            <div className="mx-auto max-w-[700px] space-y-6 pb-5 sm:space-y-7 sm:pb-8">
               {activeConversation.messages.map(message => (
-                <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[88%] sm:max-w-[75%]" : "max-w-full"}>
+                <article key={message.id} className={message.role === "user" ? "ml-auto max-w-[92%] sm:max-w-[75%]" : "max-w-full"}>
                   <ThinkingPanel message={message} />
-                  <div className={`reference-message ${message.role === "user" ? "rounded-[11px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[15px] leading-7 text-[#2f3138]"}`}>
+                  <div className={`reference-message ${message.role === "user" ? "rounded-[14px] bg-[#e3e7fb] px-3.5 py-2.5 text-[14px] leading-6 text-[#303752]" : message.error ? "text-[#b23b35]" : "text-[14px] leading-6 text-[#2f3138] sm:text-[15px] sm:leading-7"}`}>
                     {message.role === "assistant" ? <FormattedAnswer content={message.content || (message.pending ? "" : "No final answer was returned.")} /> : <p className="whitespace-pre-wrap">{message.content}</p>}
                     {message.pending && <span className="reference-stream-cursor ml-1 inline-block h-4 w-[2px] bg-[#7c8ee6] align-[-2px]" />}
                   </div>
@@ -715,11 +731,11 @@ export default function OwnerChat() {
 
           {showJumpToLatest && <button onClick={() => scrollToLatest()} className="absolute bottom-[108px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#d9dde8] bg-white/95 px-3 py-2 text-[11px] font-medium text-[#596074] shadow-[0_8px_20px_rgba(37,43,64,0.12)] backdrop-blur transition-transform hover:-translate-y-0.5 active:scale-[0.97]"><ArrowDown className="h-3.5 w-3.5" /> Jump to latest</button>}
 
-          <div className="shrink-0 border-t border-[#e6e8ee] bg-[#fbfcfd] px-4 pb-4 pt-3 sm:px-8 sm:pb-5">
+          <div className="shrink-0 border-t border-[#e6e8ee] bg-[#fbfcfd] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:pb-5">
             <div className="mx-auto max-w-[700px]">
               <div className="rounded-[18px] border border-[#dfe1e8] bg-white px-3 py-2 shadow-[0_7px_20px_rgba(39,43,57,0.08)] transition-shadow focus-within:border-[#aab5eb] focus-within:ring-4 focus-within:ring-[#7c8ee6]/10">
-                <textarea ref={composerRef} value={draft} onChange={onDraftChange} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={1} disabled={isStreaming} className="max-h-40 min-h-[48px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2 text-[15px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50" />
-                <div className="flex items-center justify-between gap-3 pt-1"><div className="flex items-center rounded-[9px] bg-[#f1f2f6] p-0.5 text-[10px] font-medium"><button onClick={() => setAnswerMode("standard")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "standard" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Standard · 1K</button><button onClick={() => setAnswerMode("long")} disabled={isStreaming} className={`rounded-[7px] px-2 py-1.5 transition-colors ${answerMode === "long" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Long · 2K</button></div>{isStreaming ? <button onClick={cancel} className="rounded-[10px] bg-[#f4eeee] px-3 py-2 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-8 w-8 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-3.5 w-3.5" /></button>}</div>
+                <textarea ref={composerRef} value={draft} onChange={onDraftChange} onKeyDown={onComposerKeyDown} placeholder="Ask anything" rows={1} disabled={isStreaming} className="max-h-40 min-h-[52px] w-full resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-[16px] leading-6 outline-none placeholder:text-[#a4a7b0] disabled:opacity-50 sm:text-[15px]" />
+                <div className="flex items-center justify-between gap-3 pt-1"><div className="flex min-h-10 items-center rounded-[10px] bg-[#f1f2f6] p-0.5 text-[10px] font-medium"><button onClick={() => setAnswerMode("standard")} disabled={isStreaming} className={`min-h-9 rounded-[8px] px-2.5 transition-colors ${answerMode === "standard" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Standard · 1K</button><button onClick={() => setAnswerMode("long")} disabled={isStreaming} className={`min-h-9 rounded-[8px] px-2.5 transition-colors ${answerMode === "long" ? "bg-white text-[#41455c] shadow-[0_1px_3px_rgba(42,47,67,0.13)]" : "text-[#858995] hover:text-[#555a66]"}`}>Long · 2K</button></div>{isStreaming ? <button onClick={cancel} className="min-h-10 rounded-[10px] bg-[#f4eeee] px-3 text-[12px] font-semibold text-[#a9443c]">Stop</button> : <button onClick={() => void send()} disabled={!draft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-[#7c8ee6] text-white shadow-[0_4px_10px_rgba(91,109,202,0.32)] transition-all hover:bg-[#6f81dd] disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.97]" aria-label="Send message"><Send className="h-4 w-4" /></button>}</div>
               </div>
               {error && <p className="mt-2 text-xs text-[#b23b35]">{error}</p>}
               <p className="mt-2 text-center text-[10px] text-[#9a9da6]">{selectedOutput.toLocaleString()} token {answerMode === "long" ? "long-answer" : "standard"} limit · Enter to send · Shift + Enter for a new line.</p>
