@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Info,
   MessageCirclePlus,
   LockKeyhole,
   Menu,
@@ -383,6 +384,7 @@ export default function OwnerChat() {
   const [publicStatus, setPublicStatus] = useState<PublicChatStatus>(INITIAL_PUBLIC_STATUS);
   const [answerMode, setAnswerMode] = useState<AnswerMode>("standard");
   const [apiTeaserOpen, setApiTeaserOpen] = useState(false);
+  const [projectInfoOpen, setProjectInfoOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
@@ -400,6 +402,8 @@ export default function OwnerChat() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const messageScrollRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const modelMenuRef = useRef<HTMLDivElement | null>(null);
+  const apiTeaserRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
 
   const activeConversation = useMemo(
@@ -433,6 +437,28 @@ export default function OwnerChat() {
   useEffect(() => {
     if (!draft && composerRef.current) composerRef.current.style.height = "auto";
   }, [draft]);
+
+  useEffect(() => {
+    const dismissTransientSurface = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (modelMenuRef.current && !modelMenuRef.current.contains(target)) setModelMenuOpen(false);
+      if (apiTeaserRef.current && !apiTeaserRef.current.contains(target) && !(target instanceof Element && target.closest("[data-api-trigger]"))) setApiTeaserOpen(false);
+    };
+    const dismissWithEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setModelMenuOpen(false);
+      setApiTeaserOpen(false);
+      setProjectInfoOpen(false);
+      setMobileHistoryOpen(false);
+    };
+    document.addEventListener("pointerdown", dismissTransientSurface);
+    document.addEventListener("keydown", dismissWithEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissTransientSurface);
+      document.removeEventListener("keydown", dismissWithEscape);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -705,11 +731,11 @@ export default function OwnerChat() {
 
         <section className="relative flex min-h-0 flex-col overflow-hidden bg-[#fbfcfd]">
           <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-3 sm:px-7">
-            <div className="flex min-w-0 items-center gap-1.5"><button onClick={() => setMobileHistoryOpen(true)} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-[#656a76] transition-colors hover:bg-[#f1f2f5] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><div className="relative"><button onClick={() => setModelMenuOpen(open => !open)} aria-expanded={modelMenuOpen} className="flex min-h-10 items-center gap-2 rounded-[9px] bg-[#f0f2f7] px-2.5 text-[12px] font-medium text-[#363943] transition-colors hover:bg-[#e8eaf0]"><span className="truncate">Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div className="absolute left-0 top-[44px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div></div>
-            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5"><span className={`inline-flex min-h-8 items-center rounded-full border px-2 text-[10px] font-medium sm:min-h-0 sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{publicStatus.active} / {publicStatus.limit}</span><button onClick={() => setApiTeaserOpen(open => !open)} aria-expanded={apiTeaserOpen} className="grid min-h-10 min-w-10 place-items-center rounded-[10px] text-[#8e94a1] transition-colors hover:bg-[#f1f2f5] sm:flex sm:min-w-0 sm:gap-1.5 sm:px-2.5" aria-label="API coming soon"><LockKeyhole className="h-3.5 w-3.5" /><span className="hidden sm:inline">API</span></button><button onClick={clearConversation} disabled={isStreaming} className="hidden min-h-10 rounded-[10px] px-3 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40 sm:inline-flex">Clear</button></div>
+            <div className="flex min-w-0 items-center gap-1.5"><button onClick={() => setMobileHistoryOpen(true)} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-[#656a76] transition-colors hover:bg-[#f1f2f5] md:hidden" aria-label="Open conversations"><Menu className="h-4 w-4" /></button><div ref={modelMenuRef} className="relative"><button onClick={() => { setModelMenuOpen(open => !open); setApiTeaserOpen(false); }} aria-expanded={modelMenuOpen} aria-haspopup="menu" className="flex min-h-10 items-center gap-2 rounded-[10px] border border-transparent bg-[#f0f2f7] px-2.5 text-[12px] font-medium text-[#363943] transition-colors hover:border-[#dfe2ea] hover:bg-[#e8eaf0]"><span className="truncate">Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div role="menu" className="absolute left-0 top-[44px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button role="menuitem" onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div role="menuitem" aria-disabled="true" className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div role="menuitem" aria-disabled="true" className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div></div>
+            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1"><output aria-live="polite" className={`inline-flex h-10 items-center rounded-[10px] border px-2.5 text-[10px] font-semibold sm:px-3 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live · </span>{capacityLabel}</output><button onClick={() => { setProjectInfoOpen(true); setApiTeaserOpen(false); setModelMenuOpen(false); }} className="grid h-10 w-10 place-items-center rounded-[10px] text-[#747985] transition-colors hover:bg-[#f1f2f5]" aria-label="About Mattr Chat"><Info className="h-4 w-4" /></button><button data-api-trigger onClick={() => { setApiTeaserOpen(open => !open); setModelMenuOpen(false); }} aria-expanded={apiTeaserOpen} className="grid h-10 w-10 place-items-center rounded-[10px] text-[#747985] transition-colors hover:bg-[#f1f2f5] sm:flex sm:w-auto sm:gap-1.5 sm:px-2.5" aria-label="API coming soon"><LockKeyhole className="h-3.5 w-3.5" /><span className="hidden sm:inline">API</span></button><button onClick={clearConversation} disabled={isStreaming} className="hidden h-10 items-center rounded-[10px] px-3 text-[12px] font-medium text-[#626774] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40 sm:inline-flex">Clear</button></div>
           </header>
 
-          {apiTeaserOpen && <div className="absolute right-3 top-[70px] z-30 w-[min(330px,calc(100%-1.5rem))] rounded-[16px] border border-[#dce0eb] bg-white p-4 shadow-[0_16px_35px_rgba(40,46,67,0.16)] sm:right-7"><div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-[#333741]">Developer API</p><p className="mt-1 text-[12px] leading-5 text-[#747987]">Bring Mattr Chat into your own workflow.</p></div><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#7c8ee6]" /></div><button disabled className="mt-4 flex min-h-10 w-full items-center justify-center rounded-[10px] border border-[#e0e3ec] bg-[#f5f6f9] text-[12px] font-semibold text-[#9aa0ae]">Create API key <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] uppercase tracking-[0.06em] text-[#7e86a5]">Coming soon</span></button></div>}
+          {apiTeaserOpen && <div ref={apiTeaserRef} className="absolute right-3 top-[70px] z-30 w-[min(330px,calc(100%-1.5rem))] rounded-[16px] border border-[#dce0eb] bg-white p-4 shadow-[0_16px_35px_rgba(40,46,67,0.16)] sm:right-7"><div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-[#333741]">Developer API</p><p className="mt-1 text-[12px] leading-5 text-[#747987]">Bring Mattr Chat into your own workflow.</p></div><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#7c8ee6]" /></div><button disabled className="mt-4 flex min-h-10 w-full items-center justify-center rounded-[10px] border border-[#e0e3ec] bg-[#f5f6f9] text-[12px] font-semibold text-[#9aa0ae]">Create API key <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[9px] uppercase tracking-[0.06em] text-[#7e86a5]">Coming soon</span></button></div>}
 
           {capacityNotice && <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-[11px] border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 sm:mx-7"><span><span className="font-semibold">Live chat is busy.</span> {capacityNotice}</span><button onClick={() => setCapacityNotice("")} className="rounded p-1 text-amber-700 hover:bg-amber-100" aria-label="Dismiss capacity message"><X className="h-3.5 w-3.5" /></button></div>}
 
@@ -744,6 +770,15 @@ export default function OwnerChat() {
         </section>
       </div>
     </main>
+    {projectInfoOpen && <div className="fixed inset-0 z-50 flex items-end bg-[#20232d]/30 p-0 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="mattr-chat-info-title">
+      <button onClick={() => setProjectInfoOpen(false)} className="absolute inset-0" aria-label="Close Mattr Chat information" />
+      <section className="relative w-full rounded-t-[24px] border border-white/80 bg-white px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_22px_60px_rgba(30,35,52,0.22)] sm:max-w-[480px] sm:rounded-[22px] sm:p-6">
+        <div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><BrandMark /><span className="text-[12px] font-semibold text-[#4e5670]">Mattr Chat</span></div><h2 id="mattr-chat-info-title" className="mt-3 text-[22px] font-semibold tracking-[-0.035em] text-[#252832]">A focused local AI workspace.</h2></div><button onClick={() => setProjectInfoOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-[#747985] transition-colors hover:bg-[#f1f2f5]" aria-label="Close"><X className="h-4 w-4" /></button></div>
+        <p className="mt-3 text-[13px] leading-6 text-[#676d7b]">Use it to explore ideas, draft writing, explain concepts, and work through code in one calm conversation.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-[14px] border border-[#e4e7ef] bg-[#f8f9fc] p-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#70799e]">Works well for</p><p className="mt-2 text-[12px] leading-5 text-[#555b69]">Brainstorming, writing, summaries, explanations, and code examples.</p></div><div className="rounded-[14px] border border-[#e4e7ef] bg-[#f8f9fc] p-3.5"><p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-[#70799e]">Keep in mind</p><p className="mt-2 text-[12px] leading-5 text-[#555b69]">Chats stay in this browser, and important facts should always be checked.</p></div></div>
+        <button onClick={() => setProjectInfoOpen(false)} className="mt-5 flex h-11 w-full items-center justify-center rounded-[11px] bg-[#292d37] text-[13px] font-semibold text-white transition-colors hover:bg-[#373b46]">Got it</button>
+      </section>
+    </div>}
     {onboardingStep !== null && <OnboardingOverlay step={onboardingStep} onBack={() => setOnboardingStep(current => Math.max(0, (current ?? 0) - 1))} onNext={() => setOnboardingStep(current => Math.min(3, (current ?? 0) + 1))} onComplete={completeOnboarding} />}
     </>
   );

@@ -22,6 +22,14 @@
 - [ ] Add a concise clickable API-coming-soon panel with a disabled Create API key action, then refine Mattr Chat into a mobile-first workspace with responsive navigation, feed, composer, and touch controls. Build, type, route, desktop-interaction, and phone-width first-visit checks pass; confirm drawer and composer interaction on a physical phone after rollout.
 - [x] Verify the mobile first-visit surface at 375×812: the onboarding card is legible, touch-sized, centered, and free of horizontal overflow.
 - [x] Verify the revised public workspace loads after onboarding completion with the compact API control, responsive composer, and stable conversation area intact.
+- [x] Apply the UX consistency audit: close transient menus/popovers on outside click and Escape, unify header-control hierarchy and live-status treatment, and add a compact public project-information panel.
+- [x] Verify the normalized desktop header after onboarding: the availability indicator, information action, API action, and clear action now share a consistent control height and spacing rhythm.
+- [x] Verify the model menu opens from its trigger and dismisses when the workspace is clicked.
+- [x] Verify the model menu dismisses with Escape.
+- [x] Verify the API teaser dismisses with Escape.
+- [x] Verify the public information dialog presents concise strengths and responsible-use guidance, then dismisses with Escape.
+- [x] Verify the 375×812 workspace: no horizontal overflow, visible compact composer and history trigger, readable information bottom sheet, and openable history drawer.
+- [x] Complete the UX consistency audit: transient controls dismiss predictably, header controls use one consistent scale, and public project information is available without private operational detail.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
