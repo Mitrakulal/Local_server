@@ -193,13 +193,11 @@ function ThinkingPanel({ message }: { message: ChatEntry }) {
 
 function OnboardingOverlay({
   step,
-  capacity,
   onBack,
   onNext,
   onComplete,
 }: {
   step: number;
-  capacity: number;
   onBack: () => void;
   onNext: () => void;
   onComplete: () => void;
@@ -212,21 +210,21 @@ function OnboardingOverlay({
       icon: Sparkles,
     },
     {
-      eyebrow: "Shared live capacity",
-      title: `${capacity} people can generate at once.`,
-      body: "The live capacity label shows what is available. When all seats are in use, Mattr Chat asks new requests to wait instead of silently queuing them.",
+      eyebrow: "Made for everyday thinking",
+      title: "Bring the question. Keep the momentum.",
+      body: "Use Mattr Chat for explanations, first drafts, planning, ideas, and quick problem-solving. Choose a standard or long response when you need more depth.",
       icon: UsersRound,
     },
     {
-      eyebrow: "Your session",
-      title: "Chats stay in this browser.",
-      body: "There is no sign-in or cross-device history yet. Closing this browser session starts fresh, and recent chats are not a permanent transcript library.",
+      eyebrow: "Your space, your pace",
+      title: "Keep the thread while you work.",
+      body: "Your recent conversations are available in this browser while you use Mattr Chat. Start a new chat anytime you want a clean slate.",
       icon: CircleDot,
     },
     {
-      eyebrow: "Deliberately simple",
-      title: "Some familiar features are not here yet.",
-      body: "There is no web browsing, file upload, tools, custom assistants, or public API signup. Gemma E2B is live; Qwen 14B and more local models are planned.",
+      eyebrow: "A growing local model experience",
+      title: "Gemma E2B is ready when you are.",
+      body: "More locally hosted models are on the way. Explore the model menu to see what is live today and what is coming next.",
       icon: LockKeyhole,
     },
   ];
@@ -267,7 +265,6 @@ export default function OwnerChat() {
   const [capacityNotice, setCapacityNotice] = useState("");
   const [publicStatus, setPublicStatus] = useState<PublicChatStatus>(INITIAL_PUBLIC_STATUS);
   const [answerMode, setAnswerMode] = useState<AnswerMode>("standard");
-  const [apiPreviewOpen, setApiPreviewOpen] = useState(false);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(() => {
     try {
@@ -579,12 +576,10 @@ export default function OwnerChat() {
         <section className="relative flex min-h-0 flex-col overflow-hidden bg-[#fbfcfd]">
           <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-[#e6e8ee] px-4 sm:px-7">
             <div className="relative"><button onClick={() => setModelMenuOpen(open => !open)} aria-expanded={modelMenuOpen} className="flex items-center gap-2 rounded-[8px] bg-[#f0f2f7] px-2.5 py-1.5 text-[12px] font-medium text-[#363943] transition-colors hover:bg-[#e8eaf0]"><span>Gemma E2B</span><ChevronDown className={`h-3.5 w-3.5 text-[#7b7e88] transition-transform ${modelMenuOpen ? "rotate-180" : ""}`} /></button>{modelMenuOpen && <div className="absolute left-0 top-[38px] z-30 w-[224px] overflow-hidden rounded-[13px] border border-[#dfe2ea] bg-white p-1.5 shadow-[0_14px_34px_rgba(43,49,72,0.16)]"><button onClick={() => setModelMenuOpen(false)} className="flex w-full items-center justify-between rounded-[9px] bg-[#eef0ff] px-3 py-2.5 text-left text-[12px] font-semibold text-[#3d4779]"><span>Gemma E2B</span><span className="text-[10px] font-medium text-[#6676ca]">Live</span></button><div className="mt-1 flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>Qwen 14B</span><span className="text-[10px] font-medium">Coming soon</span></div><div className="flex items-center justify-between rounded-[9px] px-3 py-2.5 text-[12px] text-[#a0a4ae]"><span>More local models</span><span className="text-[10px] font-medium">Coming soon</span></div></div>}</div>
-            <div className="flex items-center gap-1.5"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-medium sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{capacityLabel}</span><button onClick={() => setApiPreviewOpen(open => !open)} className="flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5]"><LockKeyhole className="h-3.5 w-3.5" /> API</button><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button></div>
+            <div className="flex items-center gap-1.5"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-medium sm:px-2.5 ${capacityTone}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${publicStatus.accepting ? "bg-emerald-500" : "bg-amber-500"}`} /><span className="hidden sm:inline">Live capacity · </span>{capacityLabel}</span><span title="API access coming soon" className="flex cursor-default items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#a1a5af]"><LockKeyhole className="h-3.5 w-3.5" /> API</span><button onClick={clearConversation} disabled={isStreaming} className="rounded-[8px] px-2.5 py-1.5 text-[12px] text-[#6f727c] transition-colors hover:bg-[#f1f2f5] disabled:opacity-40">Clear</button></div>
           </header>
 
           {capacityNotice && <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-[11px] border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-800 sm:mx-7"><span><span className="font-semibold">Live chat is busy.</span> {capacityNotice}</span><button onClick={() => setCapacityNotice("")} className="rounded p-1 text-amber-700 hover:bg-amber-100" aria-label="Dismiss capacity message"><X className="h-3.5 w-3.5" /></button></div>}
-
-          {apiPreviewOpen && <div className="absolute right-4 top-[70px] z-20 w-[min(330px,calc(100%-2rem))] rounded-[16px] border border-[#dce0eb] bg-white p-4 shadow-[0_16px_35px_rgba(40,46,67,0.16)] sm:right-7"><div className="flex items-start justify-between gap-3"><div><p className="text-[12px] font-semibold text-[#333741]">Developer API</p><p className="mt-1 text-[11px] leading-5 text-[#747987]">Issued-key API access is invitation-only while the public developer experience is being prepared.</p></div><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#7c8ee6]" /></div><div className="mt-3 rounded-[10px] border border-[#e5e7ee] bg-[#f7f8fb] px-3 py-2 text-[10px] text-[#777b86]">API access · coming soon</div><p className="mt-3 text-[10px] leading-4 text-[#969aa5]">Existing issued keys continue to work privately at the API endpoint.</p></div>}
 
           <div ref={messageScrollRef} onScroll={onMessageScroll} className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-8 md:px-14">
             <div className="mx-auto max-w-[700px] space-y-7 pb-8">
@@ -617,7 +612,7 @@ export default function OwnerChat() {
         </section>
       </div>
     </main>
-    {onboardingStep !== null && <OnboardingOverlay step={onboardingStep} capacity={publicStatus.limit} onBack={() => setOnboardingStep(current => Math.max(0, (current ?? 0) - 1))} onNext={() => setOnboardingStep(current => Math.min(3, (current ?? 0) + 1))} onComplete={completeOnboarding} />}
+    {onboardingStep !== null && <OnboardingOverlay step={onboardingStep} onBack={() => setOnboardingStep(current => Math.max(0, (current ?? 0) - 1))} onNext={() => setOnboardingStep(current => Math.min(3, (current ?? 0) + 1))} onComplete={completeOnboarding} />}
     </>
   );
 }

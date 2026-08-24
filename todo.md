@@ -14,6 +14,8 @@
 - [ ] Add a first-visit public-chat onboarding sequence, remove inactive composer/header controls, and retain the model dropdown with Gemma E2B active plus disabled coming-soon model entries.
 - [x] Verify the onboarding locally: it opens on a fresh browser session, explains the three-seat capacity contract, and leaves the underlying public chat accessible after completion.
 - [x] Verify the cleaned public workspace locally: inactive header/composer controls are removed and the model dropdown shows Gemma E2B as live plus Qwen 14B and additional local models as coming soon.
+- [x] Remove internal/private disclosures from the public chat, including the API explanation and limitation-heavy onboarding content, then replace them with concise visitor-relevant product messaging.
+- [x] Verify the revised public presentation locally: the onboarding is visitor-focused and the workspace contains only a compact locked API label with no private access or implementation details.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
