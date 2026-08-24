@@ -280,7 +280,7 @@ function createRateLimiter(state, config) {
 function createAdmission(state, config) {
   return key => {
     const activeForKey = state.activeByKey.get(key.id) ?? 0;
-    if (activeForKey >= Math.min(key.active_limit, config.perKeyConcurrent)) {
+    if (activeForKey >= key.active_limit) {
       return { error: "key_concurrency_exceeded" };
     }
     if (state.globalActive >= config.globalConcurrent) {

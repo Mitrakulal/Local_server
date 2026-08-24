@@ -1,23 +1,29 @@
 /**
- * Nocturne Ledger style: public chat may stream responses, but browser code
- * never receives CHAT_GATEWAY_KEY, GATEWAY_ADMIN_TOKEN, or OWNER_CONSOLE_TOKEN.
+ * Public Mattr Chat proxy: browsers never receive the internal CHAT_GATEWAY_KEY.
+ * The router owns a small three-seat admission controller; the gateway remains
+ * the authoritative global-capacity and request-policy boundary.
  */
-import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-
-function sameSecret(left: string | undefined, right: string | undefined) {
-  if (!left || !right) return false;
-  const a = Buffer.from(left);
-  const b = Buffer.from(right);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
+type AnswerMode = "standard" | "long";
 
 function error(res: Response, status: number, code: string, message: string) {
   res.status(status).set("cache-control", "no-store").json({
     error: { code, message },
   });
+}
+
+function integerEnv(name: string, fallback: number, minimum: number, maximum: number) {
+  const value = Number(process.env[name] || fallback);
+  return Number.isSafeInteger(value) ? Math.max(minimum, Math.min(value, maximum)) : fallback;
+}
+
+function publicChatPolicy() {
+  const seats = integerEnv("PUBLIC_CHAT_SEATS", 3, 1, 3);
+  const standardOutput = integerEnv("PUBLIC_CHAT_STANDARD_MAX_OUTPUT", 1024, 32, 2048);
+  const longOutput = integerEnv("PUBLIC_CHAT_LONG_MAX_OUTPUT", 2048, standardOutput, 2048);
+  return { seats, standardOutput, longOutput };
 }
 
 async function readJson(req: Request) {
@@ -58,58 +64,67 @@ function normaliseMessages(value: unknown): ChatMessage[] {
   return messages;
 }
 
-function boundedTokens(value: unknown) {
-  const maximum = Number(process.env.OWNER_CHAT_MAX_OUTPUT || 512);
-  const requested = typeof value === "number" ? value : maximum;
-  return Math.max(32, Math.min(Math.floor(requested), maximum, 8192));
+function outputFor(mode: unknown) {
+  const policy = publicChatPolicy();
+  return mode === "long" ? policy.longOutput : policy.standardOutput;
 }
 
 /**
- * Streams a bounded owner-only conversation. This endpoint has an independent
- * owner-chat token and injects an internal gateway key only on the server.
+ * Creates a public chat endpoint with a small local concurrency gate. A slot is
+ * reserved before proxying and released on completion, failure, or disconnect.
  */
-export function createOwnerChatProxy() {
-  return async (req: Request, res: Response, _next: NextFunction) => {
+export function createPublicChatProxy() {
+  let active = 0;
+
+  const status = () => {
+    const policy = publicChatPolicy();
+    return {
+      active,
+      limit: policy.seats,
+      available: Math.max(0, policy.seats - active),
+      accepting: active < policy.seats,
+      standard_max_output: policy.standardOutput,
+      long_max_output: policy.longOutput,
+    };
+  };
+
+  const handler = async (req: Request, res: Response, _next: NextFunction) => {
     if (req.method !== "POST") {
       error(res, 405, "method_not_allowed", "Use POST to send a chat message.");
       return;
     }
 
-    const ownerChatToken = process.env.OWNER_CHAT_TOKEN;
     const chatGatewayKey = process.env.CHAT_GATEWAY_KEY;
-    if (
-      !ownerChatToken ||
-      ownerChatToken.length < 32 ||
-      !chatGatewayKey ||
-      !chatGatewayKey.startsWith("gma_live_")
-    ) {
-      error(
-        res,
-        503,
-        "owner_chat_not_configured",
-        "Owner chat secrets are not configured on this Mac mini."
-      );
+    if (!chatGatewayKey || !chatGatewayKey.startsWith("gma_live_")) {
+      error(res, 503, "public_chat_not_configured", "Public chat is not configured on this server.");
       return;
     }
-    const supplied =
-      typeof req.headers["x-owner-chat-token"] === "string"
-        ? req.headers["x-owner-chat-token"]
-        : undefined;
-    if (!sameSecret(supplied, ownerChatToken)) {
+
+    const policy = publicChatPolicy();
+    if (active >= policy.seats) {
       error(
         res,
-        401,
-        "owner_chat_auth_required",
-        "Owner chat authentication is required."
+        429,
+        "chat_capacity_full",
+        "All live chat seats are currently in use. Please wait a moment and try again."
       );
       return;
     }
 
+    active += 1;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      active = Math.max(0, active - 1);
+    };
+    const controller = new AbortController();
+    const abortOnClose = () => controller.abort();
+    const timeout = setTimeout(() => controller.abort(), 125_000);
+    res.once("close", abortOnClose);
+
     try {
-      const raw = (await readJson(req)) as {
-        messages?: unknown;
-        max_tokens?: unknown;
-      };
+      const raw = (await readJson(req)) as { messages?: unknown; answer_mode?: unknown };
       const messages = normaliseMessages(raw.messages);
       const gatewayOrigin = (
         process.env.GATEWAY_PUBLIC_BASE_URL || "http://127.0.0.1:8787"
@@ -124,17 +139,17 @@ export function createOwnerChatProxy() {
         body: JSON.stringify({
           model: process.env.GATEWAY_PUBLIC_MODEL || "gemma-e2b",
           stream: true,
-          max_tokens: boundedTokens(raw.max_tokens),
+          max_tokens: outputFor(raw.answer_mode as AnswerMode),
           messages: [
             {
               role: "system",
               content:
-                "You are a concise, thoughtful local assistant. Give a polished, direct final answer in normal content. Do not narrate planning steps or use headings such as Analyze Request, Draft Response, or Final Output. If a brief user-facing reasoning summary is useful, keep it compact and separate when the runtime supports a reasoning field. Do not reveal private chain-of-thought.",
+                "You are Mattr Chat, a concise and thoughtful local assistant. Give a polished, direct final answer in normal content. Do not narrate hidden planning steps or use headings such as Analyze Request, Draft Response, or Final Output. Do not reveal private chain-of-thought.",
             },
             ...messages,
           ],
         }),
-        signal: AbortSignal.timeout(125_000),
+        signal: controller.signal,
       });
 
       res.status(upstream.status);
@@ -158,8 +173,8 @@ export function createOwnerChatProxy() {
         if (!res.writableEnded) res.end();
       }
     } catch (reason) {
-      if (res.headersSent) return;
-      const message = reason instanceof Error ? reason.message : "Owner chat failed.";
+      if (res.headersSent || res.writableEnded) return;
+      const message = reason instanceof Error ? reason.message : "Public chat failed.";
       const clientError =
         message === "Chat request is too large." ||
         message === "Chat request must be valid JSON." ||
@@ -168,9 +183,15 @@ export function createOwnerChatProxy() {
       error(
         res,
         clientError ? 400 : 502,
-        clientError ? "invalid_chat_request" : "owner_chat_gateway_unavailable",
+        clientError ? "invalid_chat_request" : "public_chat_gateway_unavailable",
         message
       );
+    } finally {
+      clearTimeout(timeout);
+      res.removeListener("close", abortOnClose);
+      release();
     }
   };
+
+  return { handler, status };
 }

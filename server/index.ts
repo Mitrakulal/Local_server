@@ -3,7 +3,7 @@ import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createPublicGatewayProxy } from "./gatewayProxy.js";
-import { createOwnerChatProxy } from "./ownerChatProxy.js";
+import { createPublicChatProxy } from "./ownerChatProxy.js";
 import { createOwnerConsoleProxy } from "./ownerConsoleProxy.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,12 +20,16 @@ async function startServer() {
       : path.resolve(__dirname, "..", "dist", "public");
 
   const port = Number(process.env.CHAT_ROUTER_PORT || process.env.PORT || 3001);
+  const publicChat = createPublicChatProxy();
 
   // Nocturne Ledger style: the public same-host router understands only the
   // chat surface plus the established /v1 API. Secret-bearing admin routes
   // remain unavailable on the public port and continue to live on port 3000.
   if (port === 3000) app.use("/admin/api", createOwnerConsoleProxy());
-  app.use("/chat/api", createOwnerChatProxy());
+  app.get("/chat/api/status", (_req, res) =>
+    res.status(200).set("cache-control", "no-store").json(publicChat.status())
+  );
+  app.use("/chat/api/completions", publicChat.handler);
   app.use("/v1", createPublicGatewayProxy());
   app.use("/healthz", createPublicGatewayProxy());
   if (port !== 3000) {

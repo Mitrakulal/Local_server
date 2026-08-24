@@ -18,17 +18,20 @@ try {
     const label = option('label', 'invited-user');
     const expiresDays = Number.parseInt(option('expires-days', '30'), 10);
     const maxOutput = Number.parseInt(option('max-output', String(config.defaultMaxOutput)), 10);
-    if (!tenantId || !Number.isSafeInteger(expiresDays) || expiresDays < 1 || !Number.isSafeInteger(maxOutput) || maxOutput < 1 || maxOutput > config.absoluteMaxOutput) {
-      throw new Error(`Usage: node gateway/src/keys.mjs create --tenant=<id> --label=<label> --expires-days=<positive integer> [--max-output=1..${config.absoluteMaxOutput}]`);
+    const activeLimit = Number.parseInt(option('active-limit', String(config.perKeyConcurrent)), 10);
+    const rpmLimit = Number.parseInt(option('rpm-limit', String(config.defaultRpmLimit)), 10);
+    const dailyRequestLimit = Number.parseInt(option('daily-request-limit', String(config.defaultDailyRequestLimit)), 10);
+    if (!tenantId || !Number.isSafeInteger(expiresDays) || expiresDays < 1 || !Number.isSafeInteger(maxOutput) || maxOutput < 1 || maxOutput > config.absoluteMaxOutput || !Number.isSafeInteger(activeLimit) || activeLimit < 1 || activeLimit > config.globalConcurrent || !Number.isSafeInteger(rpmLimit) || rpmLimit < 1 || rpmLimit > 10000 || !Number.isSafeInteger(dailyRequestLimit) || dailyRequestLimit < 1 || dailyRequestLimit > 1000000) {
+      throw new Error(`Usage: node gateway/src/keys.mjs create --tenant=<id> --label=<label> --expires-days=<positive integer> [--max-output=1..${config.absoluteMaxOutput}] [--active-limit=1..${config.globalConcurrent}] [--rpm-limit=1..10000] [--daily-request-limit=1..1000000]`);
     }
     const expiresAt = new Date(Date.now() + expiresDays * 86400000).toISOString();
     const key = store.createKey({
       tenantId,
       label,
       expiresAt,
-      activeLimit: config.perKeyConcurrent,
-      rpmLimit: config.defaultRpmLimit,
-      dailyRequestLimit: config.defaultDailyRequestLimit,
+      activeLimit,
+      rpmLimit,
+      dailyRequestLimit,
       maxOutput,
     });
     console.log(JSON.stringify({
@@ -37,6 +40,9 @@ try {
       tenant_id: key.tenantId,
       label: key.label,
       expires_at: key.expiresAt,
+      active_limit: key.activeLimit,
+      rpm_limit: key.rpmLimit,
+      daily_request_limit: key.dailyRequestLimit,
       max_output: maxOutput,
       api_key: key.rawKey,
       warning: 'Copy this API key now. It is not stored in raw form and cannot be displayed again.',

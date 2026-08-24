@@ -1,15 +1,15 @@
-# Same-host Owner Chat Runbook
+# Same-host Public Mattr Chat Runbook
 
 ## What this release adds
 
-This release adds a ChatGPT-style owner chat at the root of the existing public hostname while retaining the developer API path:
+This release adds a small public Mattr Chat experience at the root of the existing public hostname while retaining the protected developer API path:
 
 ```text
-https://google.mattrlabs.online/      → owner chat
+https://google.mattrlabs.online/      → public Mattr Chat
 https://google.mattrlabs.online/v1    → existing developer API
 ```
 
-The release is **owner-only**. It has one conversation stored only in the current browser session. It does not create public user accounts, save server-side transcripts, or expose a gateway key in the browser.
+The release allows up to **three simultaneous public chat generations**. Visitors do not enter a manager key. Conversations remain only in each browser session; the release does not create public accounts, save server-side transcripts, or expose the internal gateway key in browser code.
 
 > Do not change the Cloudflare Tunnel YAML until the local tests in this runbook have passed. Current public API access must remain on port 8787 until port 3001 has been proven locally.
 
@@ -24,20 +24,23 @@ pnpm chat:build
 
 The build may warn about a large front-end bundle because the existing testing interface includes code-highlighting assets. A successful build still ends with `Done`.
 
-## 2. Create the two chat-only secrets
+## 2. Create the internal public-chat key and policy
 
-`OWNER_CHAT_TOKEN` unlocks the browser chat for you. `CHAT_GATEWAY_KEY` is a separate internal gateway identity that the server uses for chat; it is never pasted into the browser.
+`CHAT_GATEWAY_KEY` is a separate internal gateway identity that the server uses for public chat; it is never pasted into a browser. It must have a three-active-request allowance, a 2,048-token maximum, and an explicit daily/request-rate policy.
 
-Run this exact block on the Mac mini. It makes one new `owner-chat` gateway key, stores the raw key in the protected environment file without printing it, replaces any previous chat variables, and prints only the owner login token once.
+Run this exact block on the Mac mini. It creates one new `public-chat` gateway key, stores the raw key in the protected environment file without printing it, and replaces only the public-chat router variables.
 
 ```bash
 cd ~/Local_server
 
 CHAT_KEY_JSON="$(node --env-file=gateway/.env gateway/src/keys.mjs create \
-  --tenant=owner-chat \
-  --label='Internal same-host owner chat' \
+  --tenant=public-chat \
+  --label='Internal same-host public chat' \
   --expires-days=90 \
-  --max-output=512)"
+  --max-output=2048 \
+  --active-limit=3 \
+  --rpm-limit=60 \
+  --daily-request-limit=500)"
 
 CHAT_GATEWAY_KEY="$(printf '%s' "$CHAT_KEY_JSON" | sed -n 's/^[[:space:]]*"api_key":[[:space:]]*"\([^"]*\)".*/\1/p')"
 if [ -z "$CHAT_GATEWAY_KEY" ]; then
@@ -45,19 +48,17 @@ if [ -z "$CHAT_GATEWAY_KEY" ]; then
   exit 1
 fi
 
-OWNER_CHAT_TOKEN="$(openssl rand -hex 32)"
 TEMP_ENV="gateway/.env.chat.tmp"
-grep -v -E '^(OWNER_CHAT_TOKEN|CHAT_GATEWAY_KEY|OWNER_CHAT_MAX_OUTPUT|CHAT_ROUTER_PORT)=' gateway/.env > "$TEMP_ENV"
-printf '\nOWNER_CHAT_TOKEN=%s\nCHAT_GATEWAY_KEY=%s\nOWNER_CHAT_MAX_OUTPUT=512\nCHAT_ROUTER_PORT=3001\n' \
-  "$OWNER_CHAT_TOKEN" "$CHAT_GATEWAY_KEY" >> "$TEMP_ENV"
+grep -v -E '^(CHAT_GATEWAY_KEY|PUBLIC_CHAT_SEATS|PUBLIC_CHAT_STANDARD_MAX_OUTPUT|PUBLIC_CHAT_LONG_MAX_OUTPUT|CHAT_ROUTER_PORT)=' gateway/.env > "$TEMP_ENV"
+printf '\nCHAT_GATEWAY_KEY=%s\nPUBLIC_CHAT_SEATS=3\nPUBLIC_CHAT_STANDARD_MAX_OUTPUT=1024\nPUBLIC_CHAT_LONG_MAX_OUTPUT=2048\nCHAT_ROUTER_PORT=3001\n' \
+  "$CHAT_GATEWAY_KEY" >> "$TEMP_ENV"
 mv "$TEMP_ENV" gateway/.env
 chmod 600 gateway/.env
 
-printf '\nSAVE THIS OWNER CHAT TOKEN IN YOUR PASSWORD MANAGER:\n%s\n\n' "$OWNER_CHAT_TOKEN"
-unset CHAT_KEY_JSON CHAT_GATEWAY_KEY OWNER_CHAT_TOKEN
+unset CHAT_KEY_JSON CHAT_GATEWAY_KEY
 ```
 
-Copy the displayed `OWNER_CHAT_TOKEN` into your password manager. Do not send it in chat, paste it into a screenshot, or use it as an API key. The internal `CHAT_GATEWAY_KEY` stays only in `gateway/.env`.
+The internal `CHAT_GATEWAY_KEY` stays only in `gateway/.env`. Never send it in chat, paste it into a screenshot, or use it as a customer API key.
 
 ## 3. Start and test port 3001 locally
 
@@ -86,7 +87,15 @@ Open the local test address in Windows:
 http://127.0.0.1:3001/
 ```
 
-Paste the owner chat token at the screen, send one short prompt, and confirm a streamed response arrives. The conversation remains in the present browser session only.
+The public workspace should open directly without a login screen. Confirm the green `Live capacity · 0 / 3 active` label appears, send one standard prompt, select `Long · 2K`, and confirm another streamed response arrives. Conversations remain in each browser session only.
+
+Confirm the status endpoint separately:
+
+```powershell
+curl.exe http://127.0.0.1:3001/chat/api/status
+```
+
+It must report `active: 0`, `limit: 3`, `standard_max_output: 1024`, and `long_max_output: 2048` while idle.
 
 In a second Windows PowerShell window, prove the API is preserved through port 3001:
 
@@ -142,9 +151,9 @@ tail -n 100 ~/Local_server/gateway/logs/chat-router.out.log
 tail -n 100 ~/Local_server/gateway/logs/chat-router.err.log
 ```
 
-## 5. Cloudflare Tunnel cutover — perform later, with a backup
+## 5. Cloudflare routing and public verification
 
-Only after the local chat and `/v1` tests have passed, change the existing `google.mattrlabs.online` tunnel rule from port 8787 to port 3001. Keep the hostname unchanged.
+The current `google.mattrlabs.online` tunnel route already targets port 3001. Keep the hostname unchanged and retain the earlier port-8787 configuration backup as rollback.
 
 ```yaml
 - hostname: google.mattrlabs.online
@@ -153,9 +162,9 @@ Only after the local chat and `/v1` tests have passed, change the existing `goog
 
 This is the only tunnel YAML change. The port-3001 router forwards `/v1/*` and `/healthz` to the old protected gateway, so developer clients keep the same base URL.
 
-Before this cutover, add the pending Cloudflare edge rate rule. The owner-chat login screen will be publicly reachable after the cutover, so edge abuse protection should be in place first.
+Before wider promotion, add the pending Cloudflare edge rate rules for the public chat completion path and customer API path. The chat has a server-enforced three-seat limit, but edge rules still reduce wasteful traffic before it reaches the host.
 
-After saving the YAML, validate it, restart `com.cloudflare.cloudflared`, reconnect SSH if the tunnel restart briefly drops it, and test both:
+After the router update, restart the chat-router service and test both:
 
 ```powershell
 curl.exe -i https://google.mattrlabs.online/healthz

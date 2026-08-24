@@ -1,16 +1,16 @@
 # Mattr Labs Local LLM Provider
 
-An **invite-only, single-model LLM API pilot** running on private local hardware. The service provides an OpenAI-compatible streaming API for approved users, a private owner chat, and an SSH-only Provider Command Center for customer-key and operations management.
+An **invite-only, single-model LLM API pilot** running on private local hardware. The service provides an OpenAI-compatible streaming API for approved users, a small three-seat public chat, and an SSH-only Provider Command Center for customer-key and operations management.
 
 > This repository intentionally contains **no raw API keys, access tokens, passwords, tunnel credentials, private configuration files, customer prompts, or customer answers**. Keep all secrets in the host's private environment and never commit them.
 
 ## Current status
 
-The core provider service is live. The public hostname serves a protected API at `/v1/*` and an owner-only chat interface at `/`. The raw inference runtime and private operations console are not publicly exposed.
+The core provider service is live. The public hostname serves a protected API at `/v1/*` and a small three-seat public chat at `/`. The raw inference runtime and private operations console are not publicly exposed.
 
 | Surface | Availability | Purpose |
 |---|---|---|
-| Owner chat | `https://google.mattrlabs.online/` | Private browser chat for the service owner. It requires owner access and is not a public customer chat product. |
+| Public chat | `https://google.mattrlabs.online/` | Small public beta chat with three shared live seats, 1,024-token standard answers, and an optional 2,048-token long-answer mode. |
 | Customer API | `https://google.mattrlabs.online/v1` | OpenAI-compatible text generation for users with an issued API key. |
 | Model alias | `gemma-e2b` | The supported public model name for API requests. |
 | Provider Command Center | Private, SSH-only | Customer keys, safe usage metadata, capacity, request activity, and launch-safety guidance. |
@@ -43,9 +43,9 @@ The product deliberately separates customer use from private operations.
 ```mermaid
 flowchart LR
   C[Customer application\nIssued API key] --> E[Public hostname]
-  O[Owner browser\nOwner access] --> E
+  O[Public chat visitor] --> E
   E -->|/v1/*| G[Protected gateway]
-  E -->|/| Chat[Owner chat]
+  E -->|/| Chat[Public Mattr Chat]
   Chat --> G
   G --> M[Private local inference]
   Admin[Owner over SSH] --> Console[Private Provider Command Center]
@@ -58,7 +58,7 @@ flowchart LR
 | Capacity fairness | The service allows one active generation per customer key and four active generations across the host. Excess interactive requests are rejected clearly rather than silently queued. |
 | Model privacy | The inference runtime remains private and is never directly exposed as a public internet service. |
 | Owner operations | The Provider Command Center, metrics, and Load Lab are SSH-only. They are not available from the public hostname. |
-| Chat privacy | Owner chat history is local to the active browser session. It is not a customer transcript platform. |
+| Chat privacy | Public chat history is local to the active browser session. It is not a customer transcript platform. |
 | Telemetry privacy | Gateway telemetry records safe operational metadata such as timing, status, and usage counts; prompt and answer text are not retained by default. |
 
 ## What the Provider Command Center does
@@ -84,7 +84,7 @@ Before inviting additional external users, complete the critical operating work 
 | Location | Description |
 |---|---|
 | [`gateway/`](gateway/) | Protected API gateway, key controls, policy enforcement, SQLite metadata ledger, and command-line operations. |
-| [`client/`](client/) | React interfaces for the owner chat, Provider Command Center, and Load Lab. |
+| [`client/`](client/) | React interfaces for public Mattr Chat, the Provider Command Center, and Load Lab. |
 | [`server/`](server/) | Same-host router and private proxies that keep browser surfaces separate from protected server credentials. |
 | [`docs/`](docs/) | Architecture, runbooks, benchmark evidence, provider service map, and current readiness gap register. |
 | [`test/`](test/) | Same-host routing acceptance test. |
@@ -111,8 +111,8 @@ Do not add secret environment files, database files, generated runtime logs, raw
 | [Provider gap register](docs/PROVIDER_GAP_REGISTER.md) | Prioritized interface, API, admin, security, operations, and commercial-readiness gaps. |
 | [Gateway administrator runbook](docs/ADMIN_RUNBOOK_MAC_MINI_GATEWAY.md) | Owner-only gateway operations, customer-key management, testing, and recovery guidance. |
 | [Private Owner Console](docs/PRIVATE_OWNER_CONSOLE.md) | SSH-only console access and operational workflow. |
-| [Same-host owner chat blueprint](docs/SAME_HOST_OWNER_CHAT_BLUEPRINT.md) | Public-path routing contract and owner-chat security boundary. |
-| [Same-host owner chat runbook](docs/SAME_HOST_OWNER_CHAT_RUNBOOK.md) | Local owner-chat setup, verification, and controlled routing changes. |
+| [Same-host public chat blueprint](docs/SAME_HOST_OWNER_CHAT_BLUEPRINT.md) | Public-path routing contract, three-seat admission model, and safe API boundary. |
+| [Same-host public chat runbook](docs/SAME_HOST_OWNER_CHAT_RUNBOOK.md) | Mac mini public-chat setup, verification, and controlled routing guidance. |
 | [Gemma capacity benchmark](docs/BENCHMARK_GEMMA_E2B_MAC_MINI.md) | Measured capacity baseline and concurrency evidence. |
 | [Phase 1 gateway blueprint](docs/PHASE1_PROTECTED_GATEWAY_BLUEPRINT.md) | Detailed protected-gateway policy, capacity, security, and telemetry design. |
 

@@ -5,6 +5,12 @@
 - [ ] Upgrade the private Owner Console into a Provider Command Center with a live service map, API onboarding guidance, and explicit launch-safety gates while preserving its SSH-only boundary.
 - [ ] Produce and maintain a prioritized interface, API, admin, operations, security, and commercial-readiness gap register for the live provider service.
 - [x] Refresh the public repository README with the current provider architecture, public API contract, private operator surfaces, safe setup guidance, and an explicit no-secrets policy.
+- [x] Replace the Simple RAG Pipeline entry in the supplied resume with a balanced Mattr Chat project entry that covers the local LLM chat interface, protected API, and Cloudflare deployment.
+- [x] Confirm the exact active chat and gateway output, context, and concurrency limits before the approved public three-seat chat conversion.
+- [x] Convert the owner-only chat into a three-seat public chat with a live availability indicator and a locked API-coming-soon area, while leaving the issued-key API contract unchanged.
+- [x] Implement the approved public-chat policy: three server-enforced active seats, 1,024 standard output tokens, and an explicit 2,048-token long-answer mode.
+- [ ] Roll out the public-chat release on the Mac mini with a fresh internal public-chat key that has three active seats and a 2,048-token allowance, then verify the public domain and issued-key API.
+- [x] Verify locally that the public chat opens without a manager-key screen, displays live 0/3 availability, offers Standard 1K and Long 2K controls, and shows an API-coming-soon preview without exposing key issuance.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
