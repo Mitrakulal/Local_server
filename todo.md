@@ -31,6 +31,7 @@
 - [x] Verify the 375×812 workspace: no horizontal overflow, visible compact composer and history trigger, readable information bottom sheet, and openable history drawer.
 - [x] Complete the UX consistency audit: transient controls dismiss predictably, header controls use one consistent scale, and public project information is available without private operational detail.
 - [x] Revise the public information panel to explain Mattr Chat’s local-LLM learning purpose, request/context/KV/security themes, and clear visitor-relevant limits without disclosing private operations. Verified the complete sheet at 375×812: all five concise sections are legible with no overflow or required scroll.
+- [x] Rewrite the public information panel as the actual Mattr Chat builder story: a locally run model turned into a small internet-accessible service, with the request, context, API, and security lessons plus honest small-service limits. Verified the full sheet at 375×812 without overflow or required scroll.
 
 - [x] Define the test plan model, safe default limits, and metric calculations.
 - [x] Build the endpoint configuration and virtual-user scenario controls.
