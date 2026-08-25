@@ -439,6 +439,58 @@ export default function OwnerChat() {
   }, [draft]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const mobileViewport = window.matchMedia("(max-width: 767px)");
+    const previous = {
+      rootOverflow: root.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyOverscrollBehavior: body.style.overscrollBehavior,
+      viewportHeight: root.style.getPropertyValue("--mattr-chat-viewport-height"),
+    };
+    let resetScrollFrame = 0;
+
+    const syncViewport = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      root.style.setProperty("--mattr-chat-viewport-height", `${Math.round(height)}px`);
+
+      if (!mobileViewport.matches) {
+        root.style.overflow = previous.rootOverflow;
+        body.style.overflow = previous.bodyOverflow;
+        body.style.overscrollBehavior = previous.bodyOverscrollBehavior;
+        return;
+      }
+
+      root.style.overflow = "hidden";
+      body.style.overflow = "hidden";
+      body.style.overscrollBehavior = "none";
+      window.cancelAnimationFrame(resetScrollFrame);
+      resetScrollFrame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("scroll", syncViewport);
+    mobileViewport.addEventListener("change", syncViewport);
+    document.addEventListener("focusin", syncViewport);
+
+    return () => {
+      window.cancelAnimationFrame(resetScrollFrame);
+      window.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("scroll", syncViewport);
+      mobileViewport.removeEventListener("change", syncViewport);
+      document.removeEventListener("focusin", syncViewport);
+      root.style.overflow = previous.rootOverflow;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.overscrollBehavior = previous.bodyOverscrollBehavior;
+      if (previous.viewportHeight) root.style.setProperty("--mattr-chat-viewport-height", previous.viewportHeight);
+      else root.style.removeProperty("--mattr-chat-viewport-height");
+    };
+  }, []);
+
+  useEffect(() => {
     const dismissTransientSurface = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
@@ -700,8 +752,8 @@ export default function OwnerChat() {
         <p className="mt-4 px-1 text-[11px] leading-5 text-[#858894]">Recent chats stay in this browser session.</p>
       </aside>
     </div>}
-    <main className="reference-chat-shell h-[100dvh] overflow-hidden bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
-      <div className="mx-auto grid h-full min-h-0 max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:h-[calc(100dvh-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
+    <main className="reference-chat-shell h-[var(--mattr-chat-viewport-height,100dvh)] min-h-0 overflow-hidden bg-[#e9ebf1] p-0 text-[#202124] sm:p-5">
+      <div className="mx-auto grid h-full min-h-0 max-w-[1440px] grid-cols-1 overflow-hidden bg-[#fafbfc] sm:h-[calc(var(--mattr-chat-viewport-height,100dvh)-2.5rem)] sm:rounded-[24px] sm:border sm:border-white/90 sm:shadow-[0_22px_65px_rgba(49,54,72,0.16)] md:grid-cols-[236px_minmax(0,1fr)]">
         <aside className="hidden min-h-0 flex-col overflow-hidden border-r border-[#e1e3ea] bg-[#f3f4f9] p-4 md:flex">
           <div className="flex shrink-0 items-center px-1"><div className="flex items-center gap-2.5"><BrandMark /><span className="text-sm font-semibold tracking-[-0.02em]">Mattr Chat</span></div></div>
 
