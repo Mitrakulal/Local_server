@@ -269,10 +269,14 @@ function validateChatPayload(payload, key, config) {
       ],
     };
   }
-  const requestedOutput = payload.max_tokens ?? config.defaultMaxOutput;
+  const requestedOutput =
+    payload.max_tokens ?? payload.max_completion_tokens ?? config.defaultMaxOutput;
   if (!Number.isSafeInteger(requestedOutput) || requestedOutput < 1) {
     return {
-      error: ["max_tokens must be a positive integer.", "invalid_max_tokens"],
+      error: [
+        "max_tokens (or max_completion_tokens) must be a positive integer.",
+        "invalid_max_tokens",
+      ],
     };
   }
   const permittedOutput = Math.min(key.max_output, config.absoluteMaxOutput);
