@@ -268,3 +268,43 @@ test("provides owner telemetry and safe key operations only after administrator 
     await fixture.cleanup();
   }
 });
+
+test("accepts and forwards response_format json_schema to the backend", async () => {
+  const fixture = await createFixture({ delayMs: 1 });
+  try {
+    const key = fixture.createKey("schema-test");
+    const response = await chatRequest(fixture.baseUrl, key.rawKey, {
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "person",
+          schema: {
+            type: "object",
+            properties: { name: { type: "string" } },
+          },
+        },
+      },
+    });
+    await response.text();
+    assert.equal(response.status, 200);
+    assert.equal(fixture.calls(), 1);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("rejects an invalid response_format before backend dispatch", async () => {
+  const fixture = await createFixture();
+  try {
+    const key = fixture.createKey("schema-bad");
+    const response = await chatRequest(fixture.baseUrl, key.rawKey, {
+      response_format: { type: "xml" },
+    });
+    const body = await response.json();
+    assert.equal(response.status, 422);
+    assert.equal(body.error.code, "invalid_response_format");
+    assert.equal(fixture.calls(), 0);
+  } finally {
+    await fixture.cleanup();
+  }
+});

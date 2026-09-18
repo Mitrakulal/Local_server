@@ -182,7 +182,6 @@ function validateChatPayload(payload, key, config) {
     "tools",
     "functions",
     "tool_choice",
-    "response_format",
     "modalities",
     "audio",
     "attachments",
@@ -194,6 +193,56 @@ function validateChatPayload(payload, key, config) {
         "feature_not_enabled",
       ],
     };
+  }
+  let responseFormat;
+  if (payload.response_format !== undefined) {
+    const format = payload.response_format;
+    if (!format || typeof format !== "object" || Array.isArray(format)) {
+      return {
+        error: [
+          "response_format must be an object such as { type: \"json_schema\", json_schema: { name, schema } }.",
+          "invalid_response_format",
+        ],
+      };
+    }
+    const type = format.type;
+    if (type === "json_object") {
+      if (format.schema !== undefined && format.schema !== null) {
+        return {
+          error: [
+            "json_object mode cannot include a schema; use type json_schema instead.",
+            "invalid_response_format",
+          ],
+        };
+      }
+      responseFormat = { type: "json_object" };
+    } else if (type === "json_schema") {
+      const schema = format.json_schema;
+      if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
+        return {
+          error: [
+            "json_schema mode requires a json_schema object with a name and a schema.",
+            "invalid_response_format",
+          ],
+        };
+      }
+      if (typeof schema.schema !== "object" || schema.schema === null) {
+        return {
+          error: [
+            "json_schema mode requires a JSON Schema in json_schema.schema.",
+            "invalid_response_format",
+          ],
+        };
+      }
+      responseFormat = { type: "json_schema", json_schema: schema };
+    } else {
+      return {
+        error: [
+          "response_format.type must be 'json_object' or 'json_schema'.",
+          "invalid_response_format",
+        ],
+      };
+    }
   }
   let inputCharacters = 0;
   for (const message of payload.messages) {
@@ -249,6 +298,7 @@ function validateChatPayload(payload, key, config) {
             ? payload.temperature
             : undefined,
         top_p: typeof payload.top_p === "number" ? payload.top_p : undefined,
+        response_format: responseFormat,
         user: `key_${key.id}`,
       },
     },
